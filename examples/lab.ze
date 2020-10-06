@@ -1,0 +1,2 @@
+let rec even n = if n == 0 then True else if n == 1 then False else even (n - 2) in
+even 22
