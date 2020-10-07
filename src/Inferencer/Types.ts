@@ -119,9 +119,10 @@ export const showTyConst = (v: TyConst): string => {
 };
 
 export const showPolyTy = (t: PolyTy): string => {
+    if (t.polyVars.length === 0) return showMonoTy(t.ty);
     return `${t.polyVars.map(v => `∀${showTyVar(v)}`)}, ${showMonoTy(t.ty)}`;
 };
 
 export const showTypeEnv = (env: TypeEnv): string => {
-    return `{ ${Object.entries(env).map(([x, ty]) => `${showTyVar(parseInt(x))} : ${showPolyTy(ty)}`).join(', ')} }`;
+    return `{ ${Object.entries(env).map(([x, ty]) => `${x} : ${showPolyTy(ty)}`).join(', ')} }`;
 };

@@ -1,5 +1,6 @@
-import { alt, keyword, leftassoc, many, map, oneOf, parens, Parser, seq, symbol, token } from "./Combinators.ts";
-import { Expr, IdentifierExpr, IntegerExpr, LambdaExpr, showExpr, TyConstExpr } from "./Expr.ts";
+import { alt, keyword, leftassoc, many, map, oneOf, parens, Parser, sepBy, seq, symbol, token } from "./Combinators.ts";
+import { Decl } from "./Decl.ts";
+import { Expr, VarExpr, IntegerExpr, TyConstExpr, lambdaOf } from "./Expr.ts";
 
 // https://www.haskell.org/onlinereport/syntax-iso.html
 
@@ -10,11 +11,11 @@ const integer: Parser<IntegerExpr> = map(token('integer'), ({ value }) => ({
     type: 'constant', kind: 'integer', value
 }));
 
-const identifier: Parser<IdentifierExpr> = map(token('identifier'), ({ name }) => ({ type: 'identifier', name }));
+const variable: Parser<VarExpr> = map(token('identifier'), ({ name }) => ({ type: 'variable', name }));
 
 const tyconst: Parser<TyConstExpr> = map(token('tyconst'), ({ name }) => ({ type: 'tyconst', name, args: [] }));
 
-const atomic: Parser<Expr> = oneOf(integer, identifier, tyconst, parens(exp));
+const atomic: Parser<Expr> = oneOf(integer, variable, tyconst, parens(exp));
 
 const factor: Parser<Expr> = leftassoc(
     atomic,
@@ -46,32 +47,39 @@ const ifThenElse: Parser<Expr> = alt(map(
 ), app);
 
 const letIn: Parser<Expr> = alt(map(
-    seq(keyword('let'), identifier, symbol('='), exp, keyword('in'), exp),
+    seq(keyword('let'), variable, symbol('='), exp, keyword('in'), exp),
     ([_let, left, _eq, middle, _in, right]) => ({ type: 'let_in', left: left.name, middle, right })
 ), ifThenElse);
 
 const letRecIn: Parser<Expr> = alt(map(
-    seq(keyword('let'), keyword('rec'), identifier, identifier, symbol('='), exp, keyword('in'), exp),
-    ([_let, _rec, f, arg, _eq, middle, _in, right]) => ({
+    seq(keyword('let'), keyword('rec'), variable, many(variable), symbol('='), exp, keyword('in'), exp),
+    ([_let, _rec, f, args, _eq, middle, _in, right]) => ({
         type: 'let_rec_in',
         funName: f.name,
-        arg: arg.name,
-        middle,
+        arg: args[0].name,
+        middle: args.length === 1 ? middle : lambdaOf(args.slice(1).map(a => a.name), middle),
         right
     })
 ), letIn);
 
-const lambdaOf = (args: string[], body: Expr): LambdaExpr => lambdaAux([...args].reverse(), body);
-
-const lambdaAux = (args: string[], body: Expr): LambdaExpr => {
-    if (args.length === 1) return { type: 'lambda', arg: args[0], body };
-    const [h, tl] = [args[0], args.slice(1)];
-    return lambdaAux(tl, { type: 'lambda', arg: h, body });
-};
-
 const lambda = alt(map(
-    seq(token('lambda'), many(identifier), token('rightarrow'), exp),
+    seq(token('lambda'), many(variable), token('rightarrow'), exp),
     ([_lambda, args, _arrow, body]) => lambdaOf(args.map(id => id.name), body)
 ), letRecIn);
 
 export const expr: Parser<Expr> = lambda;
+
+const funDecl: Parser<Decl> = map(
+    seq(token('identifier'), many(variable), symbol('='), expr, token('semicolon')),
+    ([f, args, _eq, body, _semi]) => ({
+        type: 'fun',
+        name: f.name,
+        args: args.map(a => a.name),
+        body: body,
+        curried: lambdaOf(args.map(a => a.name), body)
+    })
+);
+
+export const decl: Parser<Decl> = funDecl;
+
+export const program: Parser<Decl[]> = many(decl);

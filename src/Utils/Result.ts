@@ -62,6 +62,17 @@ export const mapResult = <A, B, E>(as: Result<A, E>[], f: (a: A) => B): Result<B
     return ok(bs);
 };
 
+export const fold = <T, A, E>(vals: T[], f: (acc: A, v: T) => Result<A, E>, initialValue: A): Result<A, E> => {
+    let acc: Result<A, E> = ok(initialValue);
+
+    for (const v of vals) {
+        if (isError(acc)) return acc;
+        acc = f(acc.value, v);
+    }
+
+    return acc;
+};
+
 /**
  * unwraps a successful result, throws an error otherwise
  */

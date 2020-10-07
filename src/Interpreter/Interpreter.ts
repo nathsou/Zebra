@@ -1,5 +1,6 @@
+import { Decl } from "../Parser/Decl.ts";
 import { Expr } from "../Parser/Expr.ts";
-import { envAdd, envGet, envHas } from "../Utils/Env.ts";
+import { emptyEnv, envAdd, envGet, envHas } from "../Utils/Env.ts";
 import { bind, error, mapResult, ok, Result } from "../Utils/Result.ts";
 import { ClosureVal, RecVarVal, ty, ValEnv, Value, valuesEq, ValueTypeMap } from "./Value.ts";
 
@@ -69,7 +70,7 @@ const evalExpr = (expr: Expr, env: ValEnv): EvalResult => {
     // console.log(expr.type, showExpr(expr));
 
     switch (expr.type) {
-        case 'identifier':
+        case 'variable':
             const id = expr.name;
             if (envHas(env, id)) {
                 const val = envGet(env, id);
@@ -154,4 +155,19 @@ const evalExpr = (expr: Expr, env: ValEnv): EvalResult => {
     }
 };
 
-export const interpret = (prog: Expr): EvalResult => evalExpr(prog, {});
+export const registerDecl = (decl: Decl, env: ValEnv): Result<ValEnv, EvalError> => {
+    switch (decl.type) {
+        case 'fun':
+            const recvar: RecVarVal = {
+                type: 'recvar',
+                name: decl.name,
+                arg: decl.curried.arg,
+                body: decl.curried.body,
+                env
+            };
+
+            return ok(envAdd(env, decl.name, recvar));
+    }
+};
+
+export const interpret = (prog: Expr, env = emptyEnv<Value>()): EvalResult => evalExpr(prog, env);

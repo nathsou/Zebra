@@ -185,7 +185,13 @@ export const brackets = <T>(p: AnyParser<T>): Parser<T> => {
  * parses a list of values separated by commas
  * @param p the parser matching comma separated values
  */
-export const commas = <T>(p: AnyParser<T>): Parser<T[]> => {
+export const commas = <T>(p: AnyParser<T>) => sepBy(p, 'comma');
+
+/**
+ * parses a list of values separated by the given token type
+ * @param p the parser matching separated values
+ */
+export const sepBy = <T>(p: AnyParser<T>, separator: TokenType): Parser<T[]> => {
     return state => {
         const values: T[] = [];
         let first = true;
@@ -203,7 +209,7 @@ export const commas = <T>(p: AnyParser<T>): Parser<T[]> => {
             } else {
                 values.push(res.value);
             }
-        } while (current(state)?.type === 'comma');
+        } while (current(state)?.type === separator);
 
         return ok(values);
     };

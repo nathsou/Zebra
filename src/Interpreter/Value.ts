@@ -71,3 +71,7 @@ export const showValue = (val: Value): string => {
             return `rec λ${val.arg} -> ${showExpr(val.body)}`;
     }
 };
+
+export const showValEnv = (env: ValEnv): string => {
+    return `{ ${Object.entries(env).map(([x, val]) => `${x} = ${showValue(val)}`).join(', ')} }`;
+};

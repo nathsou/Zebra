@@ -19,7 +19,8 @@ export type Punctuation =
     | Tok<'comma'>
     | Tok<'rightarrow'>
     | Tok<'lambda'>
-    | Tok<'dot'>;
+    | Tok<'dot'>
+    | Tok<'semicolon'>;
 
 export type Position = {
     line: number;
@@ -65,7 +66,8 @@ const tokenSymbs = {
     'rbracket': ']',
     'comma': ',',
     'lambda': '\\',
-    'rightarrow': '->'
+    'rightarrow': '->',
+    'semicolon': ';'
 };
 
 export const showToken = (t: Token): string => {

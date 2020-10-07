@@ -1,8 +1,9 @@
 
-export type Expr = AtomicExpr | BinopExpr | LetInExpr | LetRecInExpr | LambdaExpr | IfThenElseExpr | AppExpr;
+export type Expr = AtomicExpr | BinopExpr | LetInExpr | LetRecInExpr |
+    LambdaExpr | IfThenElseExpr | AppExpr;
 
-export type IdentifierExpr = {
-    type: 'identifier',
+export type VarExpr = {
+    type: 'variable',
     name: string
 };
 
@@ -54,7 +55,7 @@ export type AppExpr = {
     rhs: Expr
 };
 
-export type AtomicExpr = ConstantExpr | IdentifierExpr | TyConstExpr;
+export type AtomicExpr = ConstantExpr | VarExpr | TyConstExpr;
 
 export type BinopExpr = {
     type: 'binop',
@@ -65,7 +66,7 @@ export type BinopExpr = {
 
 export const showExpr = (expr: Expr): string => {
     switch (expr.type) {
-        case 'identifier':
+        case 'variable':
             return expr.name;
         case 'constant':
             switch (expr.kind) {
@@ -91,4 +92,16 @@ export const showExpr = (expr: Expr): string => {
 
             return `${expr.name} ${expr.args.map(showExpr).join(' ')}`;
     }
+};
+
+/**
+ * creates a curried lambda expression from a list of arguments and the body
+ */
+export const lambdaOf = (args: string[], body: Expr): LambdaExpr => lambdaAux([...args].reverse(), body);
+
+const lambdaAux = (args: string[], body: Expr): LambdaExpr => {
+    if (args.length === 0) return { type: 'lambda', arg: 'x', body };
+    if (args.length === 1) return { type: 'lambda', arg: args[0], body };
+    const [h, tl] = [args[0], args.slice(1)];
+    return lambdaAux(tl, { type: 'lambda', arg: h, body });
 };

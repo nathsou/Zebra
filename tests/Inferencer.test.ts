@@ -116,4 +116,18 @@ Deno.test('infer let rec in type', () => {
         'if n == 1 then False else even (n - 2) in even 17',
         boolTy
     );
+
+    assertType(`let or = \\a b -> if a then True else b in
+        
+        let is_prime = \\n ->
+            if n == 2 then True
+            else if or (n < 2) (n % 2 == 0) then False
+            else let rec aux n i = 
+                if i * i >= n then True
+                else if n % i == 0 then False
+                else aux n (i + 2)
+            in aux n 3
+        in is_prime 1789`,
+        boolTy
+    );
 });
