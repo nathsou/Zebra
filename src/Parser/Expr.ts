@@ -90,7 +90,7 @@ export const showExpr = (expr: Expr): string => {
                 return expr.name;
             }
 
-            return `${expr.name} ${expr.args.map(showExpr).join(' ')}`;
+            return `${expr.name} ${expr.args.map(a => showExpr(a)).join(' ')}`;
     }
 };
 

@@ -1,12 +1,17 @@
 import { assert } from "https://deno.land/std@0.73.0/testing/asserts.ts";
 import { boolTy, funTy, intTy } from "../src/Inferencer/FixedTypes.ts";
 import { inferExprType } from "../src/Inferencer/Inferencer.ts";
-import { MonoTy, showMonoTy } from "../src/Inferencer/Types.ts";
+import { MonoTy, polyTy, showMonoTy, TypeEnv } from "../src/Inferencer/Types.ts";
 import { unify } from "../src/Inferencer/Unification.ts";
 import { parse } from "../src/Parser/Combinators.ts";
 import { expr } from "../src/Parser/Parser.ts";
 import { isSome } from "../src/Utils/Mabye.ts";
 import { bind, isError, ok } from "../src/Utils/Result.ts";
+
+const gamma: TypeEnv = {
+    'True': polyTy(boolTy),
+    'False': polyTy(boolTy)
+};
 
 const assertSameTypes = (a: MonoTy, b: MonoTy): void => {
     assert(isSome(unify(a, b)));
@@ -14,7 +19,7 @@ const assertSameTypes = (a: MonoTy, b: MonoTy): void => {
 
 const assertType = (exp: string, ty: MonoTy): void => {
     const res = bind(parse(exp, expr), e => {
-        return bind(inferExprType(e), tau => {
+        return bind(inferExprType(e, gamma), tau => {
             assertSameTypes(tau, ty);
             return ok('');
         });
@@ -27,7 +32,7 @@ const assertType = (exp: string, ty: MonoTy): void => {
 
 const assertTypeError = (exp: string): void => {
     bind(parse(exp, expr), e => {
-        return bind(inferExprType(e), tau => {
+        return bind(inferExprType(e, gamma), tau => {
             throw new Error(`expected ${exp} to produce a type error, got: "${showMonoTy(tau)}"`);
         });
     });

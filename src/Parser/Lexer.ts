@@ -11,10 +11,11 @@ const punctuations = new Map<string, Punctuation['type']>([
     ['.', 'dot'],
     [',', 'comma'],
     ['\\', 'lambda'],
-    [';', 'semicolon']
+    [';', 'semicolon'],
+    ['|', 'pipe']
 ]);
 
-const keywords: KeywordType[] = ['let', 'rec', 'in', 'if', 'then', 'else'];
+const keywords: KeywordType[] = ['let', 'rec', 'in', 'if', 'then', 'else', 'data'];
 
 export type LexerError = string;
 
@@ -51,13 +52,6 @@ export function* lex(input: string): Iterable<Result<Token, LexerError>> {
         const cur = current();
         if (isNone(cur)) break;
 
-        // unit
-        if (lookahead(2) === '()') {
-            advance(2);
-            yield ok({ type: 'tyconst', name: '()', args: [], ...pos });
-            continue;
-        }
-
         // recognize punctuations
         for (const [symb, type] of punctuations.entries()) {
             if (lookahead(symb.length) === symb) {
@@ -80,7 +74,7 @@ export function* lex(input: string): Iterable<Result<Token, LexerError>> {
         }
 
         // identifiers
-        if (/[a-z_]/.test(cur)) {
+        if (/[a-zA-Z_]/.test(cur)) {
             let f = '';
             do {
                 f += current();
@@ -88,18 +82,6 @@ export function* lex(input: string): Iterable<Result<Token, LexerError>> {
             } while (/[a-zA-Z0-9_]/.test(current() ?? ''));
 
             yield ok({ type: 'identifier', name: f, ...pos });
-            continue;
-        }
-
-        // type constructors
-        if (/[A-Z]/.test(cur)) {
-            let f = '';
-            do {
-                f += current();
-                advance();
-            } while (/[a-zA-Z0-9_]/.test(current() ?? ''));
-
-            yield ok({ type: 'tyconst', name: f, args: [], ...pos });
             continue;
         }
 

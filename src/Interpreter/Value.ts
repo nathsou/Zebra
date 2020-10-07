@@ -42,7 +42,7 @@ export const valuesEq = (a: Value, b: Value): boolean => {
         case 'recvar':
             return false;
         case 'tyconst':
-            return a.type === (b as TyConstVal).name &&
+            return a.name === (b as TyConstVal).name &&
                 a.args.length === (b as TyConstVal).args.length &&
                 a.args.every((s, i) => valuesEq(s, (b as TyConstVal).args[i]));
     }
@@ -65,7 +65,7 @@ export const showValue = (val: Value): string => {
             if (val.args.length === 0) {
                 return val.name;
             } else {
-                return `(${val.name} ${val.args.join(' ')})`;
+                return `(${val.name} ${val.args.map(showValue).join(' ')})`;
             }
         case 'recvar':
             return `rec λ${val.arg} -> ${showExpr(val.body)}`;

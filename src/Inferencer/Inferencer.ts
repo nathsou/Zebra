@@ -2,9 +2,9 @@ import { Decl } from "../Parser/Decl.ts";
 import { Expr, showExpr } from "../Parser/Expr.ts";
 import { emptyEnv, envAdd, envGet, envHas } from "../Utils/Env.ts";
 import { isNone } from "../Utils/Mabye.ts";
-import { bind, error, ok, Result } from "../Utils/Result.ts";
-import { binopTy, boolTy, constantTy, funTy, unitTy } from "./FixedTypes.ts";
-import { freshInstance, freshTyVar, generalizeTy, MonoTy, PolyTy, polyTy, resetTyVars, showMonoTy, TypeEnv } from "./Types.ts";
+import { bind, error, fold, ok, Result } from "../Utils/Result.ts";
+import { binopTy, boolTy, constantTy, funReturnTy, funTy, unitTy } from "./FixedTypes.ts";
+import { freshInstance, freshTyVar, generalizeTy, isTyConst, MonoTy, PolyTy, polyTy, resetTyVars, showMonoTy, showPolyTy, tyConst, TypeEnv } from "./Types.ts";
 import { showSubst, substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "./Unification.ts";
 
 export type TypeError = string;
@@ -46,7 +46,7 @@ const collectExprTypeSubsts = (env: TypeEnv, expr: Expr, tau: MonoTy): Result<Ty
             }
         case 'variable':
             if (!envHas(env, expr.name)) {
-                throw new Error(`type checker: unbound variable "${expr.name}"`);
+                throw new Error(`unbound variable "${expr.name}"`);
             }
 
             return checkedUnify(tau, freshInstance(envGet(env, expr.name)), expr);
@@ -140,13 +140,19 @@ const collectExprTypeSubsts = (env: TypeEnv, expr: Expr, tau: MonoTy): Result<Ty
             }
         case 'tyconst':
             {
-                if (expr.name === 'True' || expr.name === 'False') {
-                    return checkedUnify(tau, boolTy, expr);
+                if (envHas(env, expr.name)) {
+                    const constructorTy = envGet(env, expr.name);
+
+                    // the type of the variant is the last type
+                    // of the variant constructor
+                    const variantTy = funReturnTy(constructorTy.ty);
+
+                    return checkedUnify(tau, variantTy, expr);
                 } else if (expr.name === '()') {
                     return checkedUnify(tau, unitTy, expr);
+                } else {
+                    return error(`unknown type variant: "${expr.name}"`);
                 }
-
-                throw new Error(`unknown type variant: "${showExpr(expr)}"`);
             }
     }
 };
@@ -159,6 +165,17 @@ export const registerDeclTypes = (decls: Decl[]): TypeEnv => {
             case 'fun': // assign a fresh type variable to each function
                 {
                     gamma = envAdd(gamma, decl.name, polyTy(freshTyVar()));
+                    break;
+                }
+            case 'datatype':
+                {
+                    const ty = tyConst(decl.name);
+
+                    for (const variant of decl.variants) {
+                        const variantTy = variant.args.length === 0 ? ty : funTy(variant.args[0], ...variant.args.slice(1), ty);
+                        // console.log(variant.name, ':', showMonoTy(variantTy));
+                        gamma = envAdd(gamma, variant.name, polyTy(variantTy));
+                    }
                     break;
                 }
         }
@@ -190,5 +207,8 @@ export const collectDeclTypes = (env: TypeEnv, decl: Decl): Result<TypeEnv, Type
                     return ok(gammaF);
                 });
             }
+        case 'datatype': {
+            return ok(env);
+        }
     }
 };

@@ -2,14 +2,13 @@ export type Token =
     | Punctuation
     | Symbol
     | Identifier
-    | TyConst
     | Integer
     | Keyword
     | Comment
     | EOF;
 
 export type TokenType =
-    Punctuation['type'] | 'symbol' | 'keyword' | 'identifier' | 'tyconst' | 'integer' | 'comment' | 'EOF';
+    Punctuation['type'] | 'symbol' | 'keyword' | 'identifier' | 'integer' | 'comment' | 'EOF';
 
 export type Punctuation =
     | Tok<'lparen'>
@@ -20,7 +19,8 @@ export type Punctuation =
     | Tok<'rightarrow'>
     | Tok<'lambda'>
     | Tok<'dot'>
-    | Tok<'semicolon'>;
+    | Tok<'semicolon'>
+    | Tok<'pipe'>;
 
 export type Position = {
     line: number;
@@ -37,11 +37,6 @@ type Identifier = Tok<'identifier', {
     name: string
 }>;
 
-type TyConst = Tok<'tyconst', {
-    name: string,
-    args: Token[]
-}>;
-
 type Integer = Tok<'integer', {
     value: number
 }>;
@@ -50,7 +45,7 @@ type Comment = Tok<'comment', {
     value: string
 }>;
 
-export type KeywordType = 'let' | 'rec' | 'in' | 'if' | 'then' | 'else';
+export type KeywordType = 'let' | 'rec' | 'in' | 'if' | 'then' | 'else' | 'data';
 
 type Keyword = Tok<'keyword', {
     value: KeywordType
@@ -64,6 +59,7 @@ const tokenSymbs = {
     'rparen': ')',
     'lbracket': '[',
     'rbracket': ']',
+    'pipe': '|',
     'comma': ',',
     'lambda': '\\',
     'rightarrow': '->',
@@ -84,12 +80,6 @@ export const showToken = (t: Token): string => {
             return t.name;
         case 'integer':
             return t.value.toString();
-        case 'tyconst':
-            if (t.args.length === 0) {
-                return t.name;
-            }
-
-            return `(${t.name} ${t.args.map(showToken).join(' ')})`;
         default:
             return tokenSymbs[t.type];
     }

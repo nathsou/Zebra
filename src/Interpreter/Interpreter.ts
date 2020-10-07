@@ -1,8 +1,8 @@
 import { Decl } from "../Parser/Decl.ts";
-import { Expr } from "../Parser/Expr.ts";
+import { Expr, lambdaOf, TyConstExpr } from "../Parser/Expr.ts";
 import { emptyEnv, envAdd, envGet, envHas } from "../Utils/Env.ts";
 import { bind, error, mapResult, ok, Result } from "../Utils/Result.ts";
-import { ClosureVal, RecVarVal, showValEnv, ty, ValEnv, Value, valuesEq, ValueTypeMap } from "./Value.ts";
+import { ClosureVal, RecVarVal, ty, ValEnv, Value, valuesEq, ValueTypeMap } from "./Value.ts";
 
 const freshVar = (prefix: string, env: ValEnv): string => {
     if (!envHas(env, prefix)) return prefix;
@@ -158,7 +158,7 @@ export const registerDecl = (decls: Decl[]): ValEnv => {
 
     for (const decl of decls) {
         switch (decl.type) {
-            case 'fun':
+            case 'fun': {
                 const recvar: RecVarVal = {
                     type: 'recvar',
                     name: decl.name,
@@ -168,6 +168,36 @@ export const registerDecl = (decls: Decl[]): ValEnv => {
                 };
 
                 env[decl.name] = recvar;
+                break;
+            }
+            case 'datatype': {
+                // introduce a variant constructor for each datatype variant
+                for (const variant of decl.variants) {
+                    // constant / nullary variants
+                    if (variant.args.length === 0) {
+                        env[variant.name] = {
+                            type: 'tyconst',
+                            name: variant.name,
+                            args: []
+                        };
+                    } else { // compound variants
+                        const args = variant.args.map((_, i) => `x${i}`);
+                        const body: TyConstExpr = {
+                            type: 'tyconst',
+                            name: variant.name,
+                            args: args.map(x => ({ type: 'variable', name: x }))
+                        };
+
+                        env[variant.name] = {
+                            type: 'closure',
+                            arg: args[0],
+                            body: args.length > 1 ? lambdaOf(args.slice(1), body) : body,
+                            env
+                        };
+                    }
+                }
+                break;
+            }
         }
     }
 

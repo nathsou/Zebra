@@ -1,4 +1,6 @@
 
+data Bool = True | False;
+
 isPrime n =
     if n == 2 then True
     else if or (n < 2) (n % 2 == 0) then False
@@ -17,4 +19,4 @@ isMersennePrime p = if isPrime p then (isPrime ((pow 2 p) - 1)) else False;
 even n = if n == 0 then True else odd (n - 1);
 odd n = if n == 0 then False else even (n - 1);
 
-main = odd 179;
+main = isMersennePrime 17;

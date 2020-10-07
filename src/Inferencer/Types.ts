@@ -22,6 +22,18 @@ export type PolyTy = {
     ty: MonoTy
 };
 
+export const typeVarNamer = () => {
+    const memo = new Map<string, TyVar>();
+
+    return (name: string): TyVar => {
+        if (!memo.has(name)) {
+            memo.set(name, memo.size);
+        }
+
+        return memo.get(name) as TyVar;
+    };
+};
+
 export const polyTy = (ty: MonoTy, ...polyVars: TyVar[]): PolyTy => ({ polyVars, ty });
 
 export function isTyVar(x: MonoTy): x is TyVar {
@@ -115,7 +127,7 @@ export const showTyConst = (v: TyConst): string => {
 
     if (v.args.length === 0) return v.name;
 
-    return `(${v.name} ${v.args.map(showMonoTy).join(' ')})`;
+    return `(${v.name} ${v.args.map(a => showMonoTy(a)).join(' ')})`;
 };
 
 export const showPolyTy = (t: PolyTy): string => {

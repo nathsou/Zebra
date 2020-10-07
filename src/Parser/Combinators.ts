@@ -92,14 +92,34 @@ export const map = <A, B>(p: Parser<A>, f: (v: A) => B): Parser<B> => {
     return state => bind(p(state), v => ok(f(v)));
 };
 
-export const many = <T>(p: Parser<T>): Parser<T[]> => state => {
+/**
+ * applies p at least once
+ */
+export const many = <T>(p: AnyParser<T>): Parser<T[]> => state => {
     const values: T[] = [];
 
-    let res = p(state);
+    let res = parserOf(p)(state);
 
     while (isOk(res)) {
         values.push(res.value);
-        res = p(state);
+        res = parserOf(p)(state);
+    }
+
+    return ok(values);
+};
+
+/**
+ * applies p zero or more times
+ */
+export const some = <T>(p: AnyParser<T>): Parser<T[]> => state => {
+    const values: T[] = [];
+
+    let res: ParserResult<T>;
+
+    while (true) {
+        res = parserOf(p)(state);
+        if (isError(res)) break;
+        values.push(res.value);
     }
 
     return ok(values);
@@ -215,21 +235,21 @@ export const sepBy = <T>(p: AnyParser<T>, separator: TokenType): Parser<T[]> => 
     };
 };
 
-export function oneOf<A>(a: Parser<A>): Parser<A>;
-export function oneOf<A, B>(a: Parser<A>, b: Parser<B>): Parser<A | B>;
-export function oneOf<A, B, C>(a: Parser<A>, b: Parser<B>, c: Parser<C>): Parser<A | B | C>;
-export function oneOf<A, B, C, D>(a: Parser<A>, b: Parser<B>, c: Parser<C>, d: Parser<D>): Parser<A | B | C | D>;
-export function oneOf<A, B, C, D, E>(a: Parser<A>, b: Parser<B>, c: Parser<C>, d: Parser<D>, e: Parser<E>): Parser<A | B | C | D | E>;
-export function oneOf<A, B, C, D, E, F>(a: Parser<A>, b: Parser<B>, c: Parser<C>, d: Parser<D>, e: Parser<E>, f: Parser<F>): Parser<A | B | C | D | E | F>;
-export function oneOf(...ps: Parser<any>[]): Parser<any> {
+export function oneOf<A>(a: AnyParser<A>): Parser<A>;
+export function oneOf<A, B>(a: AnyParser<A>, b: AnyParser<B>): Parser<A | B>;
+export function oneOf<A, B, C>(a: AnyParser<A>, b: AnyParser<B>, c: AnyParser<C>): Parser<A | B | C>;
+export function oneOf<A, B, C, D>(a: AnyParser<A>, b: AnyParser<B>, c: AnyParser<C>, d: AnyParser<D>): Parser<A | B | C | D>;
+export function oneOf<A, B, C, D, E>(a: AnyParser<A>, b: AnyParser<B>, c: AnyParser<C>, d: AnyParser<D>, e: AnyParser<E>): Parser<A | B | C | D | E>;
+export function oneOf<A, B, C, D, E, F>(a: AnyParser<A>, b: AnyParser<B>, c: AnyParser<C>, d: AnyParser<D>, e: AnyParser<E>, f: AnyParser<F>): Parser<A | B | C | D | E | F>;
+export function oneOf(...ps: AnyParser<any>[]): AnyParser<any> {
     return alt(...ps);
 }
 
 export const fold = <T>(p: Parser<T[]>, f: (prev: T, head: T) => T) => map(p, res => res.reduce(f));
 
 export const leftassoc = <A, B, T>(
-    l: Parser<A>,
-    r: Parser<B>,
+    l: AnyParser<A>,
+    r: AnyParser<B>,
     f: (prev: T | A, val: B) => T
 ): Parser<T | A> => {
     return map(
@@ -239,8 +259,8 @@ export const leftassoc = <A, B, T>(
 };
 
 export const rightassoc = <A, B, T>(
-    l: Parser<A>,
-    r: Parser<B>,
+    l: AnyParser<A>,
+    r: AnyParser<B>,
     f: (prev: T | B, val: A) => T
 ): Parser<T | B> => {
     return map(
@@ -258,11 +278,11 @@ export const rightassoc = <A, B, T>(
  */
 export const parse = <T>(
     input: string,
-    parser: Parser<T>
+    parser: AnyParser<T>
 ): Result<T, ParserError | LexerError> => {
     return bind(mapResult([...lex(input)], x => x), tokens => {
         const state = { tokens, pos: 0 };
-        const res = parser(state);
+        const res = parserOf(parser)(state);
         if (state.pos !== state.tokens.length) {
             return error(`Unexpected token: ${formatToken(state.tokens[state.pos])}`);
         }

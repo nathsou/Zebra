@@ -1,0 +1,10 @@
+
+data List = Nil | Cons Int List;
+data Bool = True | False;
+data Nat = Z | S Nat;
+
+natOfInt n = if n == 0 then Z else S (natOfInt (n - 1));
+
+range n = if n == 0 then (Cons 0 Nil) else Cons n (range (n - 1));
+
+main = range 27;
