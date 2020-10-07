@@ -5,6 +5,7 @@ import { MonoTy, PolyTy, polyTy, tyConst, tyVar } from "./Types.ts";
 
 export const intTy = tyConst('Int');
 export const boolTy = tyConst('Bool');
+export const unitTy = tyConst('()');
 
 export const funTy = (a: MonoTy, b: MonoTy, ...ts: MonoTy[]): MonoTy => {
     return funTyAux(a, b, ...ts);

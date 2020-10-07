@@ -100,7 +100,7 @@ export const showExpr = (expr: Expr): string => {
 export const lambdaOf = (args: string[], body: Expr): LambdaExpr => lambdaAux([...args].reverse(), body);
 
 const lambdaAux = (args: string[], body: Expr): LambdaExpr => {
-    if (args.length === 0) return { type: 'lambda', arg: 'x', body };
+    if (args.length === 0) return { type: 'lambda', arg: '_', body };
     if (args.length === 1) return { type: 'lambda', arg: args[0], body };
     const [h, tl] = [args[0], args.slice(1)];
     return lambdaAux(tl, { type: 'lambda', arg: h, body });

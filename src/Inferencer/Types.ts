@@ -109,11 +109,11 @@ export const showTyVar = (v: TyVar): string => {
 };
 
 export const showTyConst = (v: TyConst): string => {
-    if (v.args.length === 0) return v.name;
-
     switch (v.name) {
         case '->': return `${showMonoTy(v.args[0])} -> ${showMonoTy(v.args[1])}`;
     }
+
+    if (v.args.length === 0) return v.name;
 
     return `(${v.name} ${v.args.map(showMonoTy).join(' ')})`;
 };

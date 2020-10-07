@@ -1,6 +1,4 @@
 
-or a b = if a then True else b;
-
 isPrime n =
     if n == 2 then True
     else if or (n < 2) (n % 2 == 0) then False
@@ -10,4 +8,13 @@ isPrime n =
         else aux n (i + 2)
     in aux n 3;
 
-main = isPrime 1789;
+or a b = if a then True else b;
+
+pow n p = if p == 0 then 1 else n * (pow n (p - 1));
+
+isMersennePrime p = if isPrime p then (isPrime ((pow 2 p) - 1)) else False;
+
+even n = if n == 0 then True else odd (n - 1);
+odd n = if n == 0 then False else even (n - 1);
+
+main = odd 179;

@@ -51,6 +51,13 @@ export function* lex(input: string): Iterable<Result<Token, LexerError>> {
         const cur = current();
         if (isNone(cur)) break;
 
+        // unit
+        if (lookahead(2) === '()') {
+            advance(2);
+            yield ok({ type: 'tyconst', name: '()', args: [], ...pos });
+            continue;
+        }
+
         // recognize punctuations
         for (const [symb, type] of punctuations.entries()) {
             if (lookahead(symb.length) === symb) {

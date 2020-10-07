@@ -2,7 +2,7 @@ import { Decl } from "../Parser/Decl.ts";
 import { Expr } from "../Parser/Expr.ts";
 import { emptyEnv, envAdd, envGet, envHas } from "../Utils/Env.ts";
 import { bind, error, mapResult, ok, Result } from "../Utils/Result.ts";
-import { ClosureVal, RecVarVal, ty, ValEnv, Value, valuesEq, ValueTypeMap } from "./Value.ts";
+import { ClosureVal, RecVarVal, showValEnv, ty, ValEnv, Value, valuesEq, ValueTypeMap } from "./Value.ts";
 
 const freshVar = (prefix: string, env: ValEnv): string => {
     if (!envHas(env, prefix)) return prefix;
@@ -67,8 +67,6 @@ const evalIntBoolBinop = (
 };
 
 const evalExpr = (expr: Expr, env: ValEnv): EvalResult => {
-    // console.log(expr.type, showExpr(expr));
-
     switch (expr.type) {
         case 'variable':
             const id = expr.name;
@@ -155,19 +153,25 @@ const evalExpr = (expr: Expr, env: ValEnv): EvalResult => {
     }
 };
 
-export const registerDecl = (decl: Decl, env: ValEnv): Result<ValEnv, EvalError> => {
-    switch (decl.type) {
-        case 'fun':
-            const recvar: RecVarVal = {
-                type: 'recvar',
-                name: decl.name,
-                arg: decl.curried.arg,
-                body: decl.curried.body,
-                env
-            };
+export const registerDecl = (decls: Decl[]): ValEnv => {
+    let env: Record<string, Value> = {};
 
-            return ok(envAdd(env, decl.name, recvar));
+    for (const decl of decls) {
+        switch (decl.type) {
+            case 'fun':
+                const recvar: RecVarVal = {
+                    type: 'recvar',
+                    name: decl.name,
+                    arg: decl.curried.arg,
+                    body: decl.curried.body,
+                    env
+                };
+
+                env[decl.name] = recvar;
+        }
     }
+
+    return env;
 };
 
 export const interpret = (prog: Expr, env = emptyEnv<Value>()): EvalResult => evalExpr(prog, env);

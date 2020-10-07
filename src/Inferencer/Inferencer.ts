@@ -1,10 +1,10 @@
 import { Decl } from "../Parser/Decl.ts";
 import { Expr, showExpr } from "../Parser/Expr.ts";
-import { envAdd, envGet, envHas } from "../Utils/Env.ts";
+import { emptyEnv, envAdd, envGet, envHas } from "../Utils/Env.ts";
 import { isNone } from "../Utils/Mabye.ts";
 import { bind, error, ok, Result } from "../Utils/Result.ts";
-import { binopTy, boolTy, constantTy, funTy } from "./FixedTypes.ts";
-import { freshInstance, freshTyVar, generalizeTy, MonoTy, polyTy, resetTyVars, showMonoTy, TypeEnv } from "./Types.ts";
+import { binopTy, boolTy, constantTy, funTy, unitTy } from "./FixedTypes.ts";
+import { freshInstance, freshTyVar, generalizeTy, MonoTy, PolyTy, polyTy, resetTyVars, showMonoTy, TypeEnv } from "./Types.ts";
 import { showSubst, substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "./Unification.ts";
 
 export type TypeError = string;
@@ -142,11 +142,29 @@ const collectExprTypeSubsts = (env: TypeEnv, expr: Expr, tau: MonoTy): Result<Ty
             {
                 if (expr.name === 'True' || expr.name === 'False') {
                     return checkedUnify(tau, boolTy, expr);
+                } else if (expr.name === '()') {
+                    return checkedUnify(tau, unitTy, expr);
                 }
 
                 throw new Error(`unknown type variant: "${showExpr(expr)}"`);
             }
     }
+};
+
+export const registerDeclTypes = (decls: Decl[]): TypeEnv => {
+    let gamma = emptyEnv<PolyTy>();
+
+    for (const decl of decls) {
+        switch (decl.type) {
+            case 'fun': // assign a fresh type variable to each function
+                {
+                    gamma = envAdd(gamma, decl.name, polyTy(freshTyVar()));
+                    break;
+                }
+        }
+    }
+
+    return gamma;
 };
 
 export const collectDeclTypes = (env: TypeEnv, decl: Decl): Result<TypeEnv, TypeError> => {
@@ -161,7 +179,7 @@ export const collectDeclTypes = (env: TypeEnv, decl: Decl): Result<TypeEnv, Type
                     funTy(argsTypes[0], argsTypes[1], ...argsTypes.slice(2), tau) :
                     argsTypes.length === 1 ?
                         funTy(argsTypes[0], tau) :
-                        funTy(freshTyVar(), tau);
+                        funTy(unitTy, tau);
 
                 const gammaArgs = argsTypes.reduce((env, ty, idx) => envAdd(env, decl.args[idx], polyTy(ty)), env);
                 const gammaF = envAdd(gammaArgs, decl.name, polyTy(fTy));

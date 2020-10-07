@@ -1,31 +1,40 @@
-import { collectDeclTypes, inferExprType } from "./Inferencer/Inferencer.ts";
-import { PolyTy, showMonoTy } from "./Inferencer/Types.ts";
+import { collectDeclTypes, inferExprType, registerDeclTypes } from "./Inferencer/Inferencer.ts";
+import { showMonoTy } from "./Inferencer/Types.ts";
 import { interpret, registerDecl } from "./Interpreter/Interpreter.ts";
-import { showValue, Value } from "./Interpreter/Value.ts";
+import { showValue } from "./Interpreter/Value.ts";
 import { parse } from "./Parser/Combinators.ts";
 import { program } from "./Parser/Parser.ts";
-import { emptyEnv } from "./Utils/Env.ts";
 import { isNone } from "./Utils/Mabye.ts";
 import { bind, fold, ok } from "./Utils/Result.ts";
 
-const [path] = Deno.args;
+const run = (source: string): void => {
+    try {
+        const out = bind(parse(source, program), prog => {
+            const main = prog.find(f => f.type === 'fun' && f.name === 'main');
 
-const source = new TextDecoder('utf-8').decode(Deno.readFileSync(path));
+            if (isNone(main)) {
+                throw new Error(`main function not found`);
+            }
 
-console.log(bind(parse(source, program), prog => {
-    const main = prog.filter(decl => decl.type === 'fun').find(f => f.name === 'main');
+            const gamma0 = registerDeclTypes(prog);
 
-    if (isNone(main)) {
-        throw new Error(`main function not found`);
-    }
-
-    return bind(fold(prog, (gamma, decl) => collectDeclTypes(gamma, decl), emptyEnv<PolyTy>()), gamma => {
-        return bind(fold(prog, (env, decl) => registerDecl(decl, env), emptyEnv<Value>()), env => {
-            return bind(inferExprType(main.body, gamma), ty => {
-                return bind(interpret(main.body, env), res => {
-                    return ok(showValue(res) + ' : ' + showMonoTy(ty));
+            return bind(fold(prog, (gamma, decl) => collectDeclTypes(gamma, decl), gamma0), gamma => {
+                return bind(inferExprType(main.body, gamma), ty => {
+                    const env = registerDecl(prog);
+                    return bind(interpret(main.body, env), res => {
+                        return ok(showValue(res) + ' : ' + showMonoTy(ty));
+                    });
                 });
             });
-        });
-    });
-}).value);
+        }).value;
+
+        console.log(out);
+    } catch (e) {
+        console.error('error: ' + (e as Error).message);
+    }
+};
+
+const [path] = Deno.args;
+const source = new TextDecoder('utf-8').decode(Deno.readFileSync(path));
+
+run(source);
