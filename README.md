@@ -4,7 +4,7 @@
 
 ### Todo
 
-- [ ] polymorphic sum types
+- [x] polymorphic sum types
 - [ ] pattern matching
 - [ ] tuples
 - [ ] automatic semicolons

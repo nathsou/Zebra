@@ -1,3 +1,4 @@
+import { assert } from "https://deno.land/std@0.73.0/testing/asserts.ts";
 import { TyConstVal as ValTyConst } from "../Interpreter/Value.ts";
 import { ConstantExpr } from "../Parser/Expr.ts";
 import { Maybe, None } from "../Utils/Mabye.ts";
@@ -8,8 +9,8 @@ export const boolTy = tyConst('Bool');
 export const unitTy = tyConst('()');
 
 // at least one argument
-export function funTy(a: MonoTy, ...ts: MonoTy[]): MonoTy;
 export function funTy(...ts: MonoTy[]): MonoTy {
+    assert(ts.length > 0);
     const h = ts.length === 1 ? unitTy : ts[0];
     const tl = ts.length === 1 ? [ts[0]] : ts.slice(1);
     return funTyAux(h, ...tl);

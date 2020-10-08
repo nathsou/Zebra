@@ -1,5 +1,5 @@
 import { collectDeclTypes, inferExprType, registerDeclTypes } from "./Inferencer/Inferencer.ts";
-import { showMonoTy } from "./Inferencer/Types.ts";
+import { showMonoTy, showTypeEnv } from "./Inferencer/Types.ts";
 import { interpret, registerDecl } from "./Interpreter/Interpreter.ts";
 import { showValue } from "./Interpreter/Value.ts";
 import { parse } from "./Parser/Combinators.ts";
@@ -22,6 +22,7 @@ const run = (source: string): void => {
             const gamma0 = registerDeclTypes(prog);
 
             return bind(fold(prog, (gamma, decl) => collectDeclTypes(gamma, decl), gamma0), gamma => {
+                // console.log(showTypeEnv(gamma));
                 return bind(inferExprType(main.body, gamma), ty => {
                     const env = registerDecl(prog);
                     return bind(interpret(main.body, env), res => {

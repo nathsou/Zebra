@@ -1,11 +1,12 @@
 import { assert } from "https://deno.land/std@0.73.0/testing/asserts.ts";
+import { typeOfPattern } from "../Interpreter/Pattern.ts";
 import { Decl } from "../Parser/Decl.ts";
 import { Expr, showExpr } from "../Parser/Expr.ts";
-import { emptyEnv, envAdd, envGet, envHas } from "../Utils/Env.ts";
+import { emptyEnv, envAdd, envGet, envHas, envMap, envSum } from "../Utils/Env.ts";
 import { isNone } from "../Utils/Mabye.ts";
 import { bind, error, ok, Result } from "../Utils/Result.ts";
 import { binopTy, boolTy, constantTy, funReturnTy, funTy, unitTy } from "./FixedTypes.ts";
-import { freshInstance, freshTyVar, generalizeTy, isTyConst, MonoTy, PolyTy, polyTy, resetTyVars, showMonoTy, showPolyTy, showTypeEnv, tyConst, TypeEnv } from "./Types.ts";
+import { freshInstance, freshTyVar, generalizeTy, isTyConst, MonoTy, PolyTy, polyTy, resetTyVars, showMonoTy, tyConst, TypeEnv } from "./Types.ts";
 import { showSubst, substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "./Unification.ts";
 
 export type TypeError = string;
@@ -89,11 +90,13 @@ const collectExprTypeSubsts = (env: TypeEnv, expr: Expr, tau: MonoTy): Result<Ty
             }
         case 'lambda':
             {
-                const tau1 = freshTyVar();
-                const tau2 = freshTyVar();
-                const gammaX = envAdd(env, expr.arg, polyTy(tau1));
-                return bind(collectExprTypeSubsts(gammaX, expr.body, tau2), sig => {
-                    const sigExpTy = substituteMono(funTy(tau1, tau2), sig);
+                const sig: Record<string, PolyTy> = {};
+                const tau1 = typeOfPattern(expr.arg, sig, env);
+                const retTy = freshTyVar();
+                const gammaVars = envSum(env, sig);
+
+                return bind(collectExprTypeSubsts(gammaVars, expr.body, retTy), sig => {
+                    const sigExpTy = substituteMono(funTy(tau1.ty, retTy), sig);
                     const sigTau = substituteMono(tau, sig);
                     return bind(checkedUnify(sigTau, sigExpTy, expr), sig2 => {
                         return ok(substCompose(sig2, sig));
@@ -113,24 +116,30 @@ const collectExprTypeSubsts = (env: TypeEnv, expr: Expr, tau: MonoTy): Result<Ty
             }
         case 'let_in':
             {
-                const tau1 = freshTyVar();
-                return bind(collectExprTypeSubsts(env, expr.middle, tau1), sig1 => {
+                const vars: Record<string, PolyTy> = {};
+                const tau1 = typeOfPattern(expr.left, vars, env);
+                return bind(collectExprTypeSubsts(env, expr.middle, tau1.ty), sig1 => {
                     const sig1Gamma = substituteEnv(env, sig1);
-                    const sig1Tau1 = substituteMono(tau1, sig1);
                     const sig1Tau = substituteMono(tau, sig1);
-                    const gammaX = envAdd(env, expr.left, generalizeTy(sig1Gamma, sig1Tau1));
-                    return bind(collectExprTypeSubsts(gammaX, expr.right, sig1Tau), sig2 => {
+                    const gammaArgs = envSum(env, envMap(vars, ({ ty }) =>
+                        generalizeTy(sig1Gamma, substituteMono(ty, sig1))
+                    ));
+                    return bind(collectExprTypeSubsts(gammaArgs, expr.right, sig1Tau), sig2 => {
                         return ok(substCompose(sig2, sig1));
                     });
                 });
             }
         case 'let_rec_in':
             {
-                const tau1 = freshTyVar();
+                const vars: Record<string, PolyTy> = {};
+                const tau1 = typeOfPattern(expr.arg, vars, env);
+
                 const tau2 = freshTyVar();
-                const fTy = funTy(tau1, tau2);
-                const gammaX = envAdd(env, expr.arg, polyTy(tau1));
-                const gammaF = envAdd(gammaX, expr.funName, polyTy(fTy));
+                const fTy = funTy(tau1.ty, tau2);
+
+                const gammaArgs = envSum(env, vars);
+
+                const gammaF = envAdd(gammaArgs, expr.funName, polyTy(fTy));
                 return bind(collectExprTypeSubsts(gammaF, expr.middle, tau2), sig1 => {
                     const sig1Gamma = substituteEnv(env, sig1);
                     const sig1FTy = substituteMono(fTy, sig1);
@@ -196,23 +205,27 @@ export const collectDeclTypes = (env: TypeEnv, decl: Decl): Result<TypeEnv, Type
     switch (decl.type) {
         case 'fun':
             {
-                const argsTypes = decl.args.map(() => freshTyVar());
                 // return type
                 const tau = freshTyVar();
+                const argsTypes: PolyTy[] = [];
 
-                const fTy = argsTypes.length > 1 ?
-                    funTy(argsTypes[0], argsTypes[1], ...argsTypes.slice(2), tau) :
-                    argsTypes.length === 1 ?
-                        funTy(argsTypes[0], tau) :
-                        funTy(unitTy, tau);
+                const sig: Record<string, PolyTy> = {};
 
-                const gammaArgs = argsTypes.reduce((env, ty, idx) => envAdd(env, decl.args[idx], polyTy(ty)), env);
+                for (const arg of decl.args) {
+                    const argTy = typeOfPattern(arg, sig, env);
+                    argsTypes.push(argTy);
+                }
+
+                const gammaArgs = envSum(env, sig);
+
+                const fTy = funTy(...argsTypes.map(t => t.ty), tau);
+
                 const gammaF = envAdd(gammaArgs, decl.name, polyTy(fTy));
                 return bind(collectExprTypeSubsts(gammaF, decl.body, tau), sig => {
-                    const sigGamma = substituteEnv(env, sig);
+                    const sigGamma = substituteEnv(gammaF, sig);
                     const sigFTy = substituteMono(fTy, sig);
-                    const gammaF = envAdd(sigGamma, decl.name, generalizeTy(sigGamma, sigFTy));
-                    return ok(gammaF);
+                    const gammaF2 = envAdd(sigGamma, decl.name, generalizeTy(sigGamma, sigFTy));
+                    return ok(gammaF2);
                 });
             }
         case 'datatype': {

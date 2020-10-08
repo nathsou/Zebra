@@ -1,5 +1,6 @@
 import { Expr, showExpr } from "../Parser/Expr.ts";
 import { Env } from "../Utils/Env.ts";
+import { Pattern, showPattern } from "./Pattern.ts";
 
 export type ValEnv = Env<Value>;
 
@@ -18,7 +19,7 @@ export type TyConstVal = { type: 'tyconst', name: string, args: Value[] };
 
 export type ClosureVal = {
     type: 'closure',
-    arg: string,
+    arg: Pattern,
     body: Expr,
     env: ValEnv
 };
@@ -26,7 +27,7 @@ export type ClosureVal = {
 export type RecVarVal = {
     type: 'recvar',
     name: string,
-    arg: string,
+    arg: Pattern,
     body: Expr,
     env: Env<Value>
 };
@@ -60,7 +61,7 @@ export const showValue = (val: Value): string => {
         case 'int':
             return val.value.toString();
         case 'closure':
-            return `λ${val.arg} -> ${showExpr(val.body)}`;
+            return `λ${showPattern(val.arg)} -> ${showExpr(val.body)}`;
         case 'tyconst':
             if (val.args.length === 0) {
                 return val.name;

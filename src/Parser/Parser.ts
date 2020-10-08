@@ -1,8 +1,8 @@
-import { MonoTy, polyTy, TyConst, tyConst, typeVarNamer, TyVar } from "../Inferencer/Types.ts";
-import { substituteMono, substitutePoly } from "../Inferencer/Unification.ts";
+import { MonoTy, TyConst, tyConst, typeVarNamer, TyVar } from "../Inferencer/Types.ts";
+import { Fun, Pattern, Var } from "../Interpreter/Pattern.ts";
 import { alt, keyword, leftassoc, many, map, oneOf, parens, Parser, sepBy, seq, some, symbol, token } from "./Combinators.ts";
 import { Decl } from "./Decl.ts";
-import { Expr, IntegerExpr, lambdaOf, VarExpr } from "./Expr.ts";
+import { ConstantExpr, Expr, IntegerExpr, lambdaOf, VarExpr } from "./Expr.ts";
 
 // https://www.haskell.org/onlinereport/syntax-iso.html
 
@@ -15,6 +15,8 @@ const integer: Parser<IntegerExpr> = map(token('integer'), ({ value }) => ({
     type: 'constant', kind: 'integer', value
 }));
 
+const constant: Parser<ConstantExpr> = oneOf(integer);
+
 const variable: Parser<VarExpr> = map(token('variable'), ({ name }) => ({ type: 'variable', name }));
 const identifier: Parser<VarExpr> = map(token('identifier'), ({ name }) => ({ type: 'variable', name }));
 
@@ -23,7 +25,23 @@ const unit: Parser<Expr> = map(
     () => ({ type: 'tyconst', name: '()', args: [] })
 );
 
-const atomic: Parser<Expr> = oneOf(integer, variable, identifier, unit, parens(exp));
+const atomic: Parser<Expr> = oneOf(constant, variable, identifier, unit, parens(exp));
+
+const varPattern: Parser<Var> = map(token('variable'), ({ name }) => name);
+
+const constantPat: Parser<Fun> = map(constant, c => {
+    switch (c.kind) {
+        case 'integer':
+            return { name: `${c.value}`, args: [] }
+    }
+});
+
+const funPattern: Parser<Fun> = alt(map(
+    seq(token('identifier'), some(() => pattern)),
+    ([f, args]) => ({ name: f.name, args })
+), constantPat);
+
+const pattern: Parser<Pattern> = alt(oneOf(varPattern, funPattern), parens(oneOf(varPattern, funPattern)));
 
 const factor: Parser<Expr> = leftassoc(
     atomic,
@@ -55,24 +73,24 @@ const ifThenElse: Parser<Expr> = alt(map(
 ), comparison);
 
 const letIn: Parser<Expr> = alt(map(
-    seq(keyword('let'), variable, symbol('='), exp, keyword('in'), exp),
-    ([_let, left, _eq, middle, _in, right]) => ({ type: 'let_in', left: left.name, middle, right })
+    seq(keyword('let'), pattern, symbol('='), exp, keyword('in'), exp),
+    ([_let, left, _eq, middle, _in, right]) => ({ type: 'let_in', left, middle, right })
 ), ifThenElse);
 
 const letRecIn: Parser<Expr> = alt(map(
-    seq(keyword('let'), keyword('rec'), variable, many(variable), symbol('='), exp, keyword('in'), exp),
+    seq(keyword('let'), keyword('rec'), variable, many(pattern), symbol('='), exp, keyword('in'), exp),
     ([_let, _rec, f, args, _eq, middle, _in, right]) => ({
         type: 'let_rec_in',
         funName: f.name,
-        arg: args[0].name,
-        middle: args.length === 1 ? middle : lambdaOf(args.slice(1).map(a => a.name), middle),
+        arg: args[0],
+        middle: args.length === 1 ? middle : lambdaOf(args.slice(1), middle),
         right
     })
 ), letIn);
 
 const lambda = alt(map(
-    seq(token('lambda'), many(variable), token('rightarrow'), exp),
-    ([_lambda, args, _arrow, body]) => lambdaOf(args.map(id => id.name), body)
+    seq(token('lambda'), many(pattern), token('rightarrow'), exp),
+    ([_lambda, args, _arrow, body]) => lambdaOf(args, body)
 ), letRecIn);
 
 export const expr: Parser<Expr> = lambda;
@@ -80,13 +98,13 @@ export const expr: Parser<Expr> = lambda;
 // declarations
 
 const funDecl: Parser<Decl> = map(
-    seq(token('variable'), many(variable), symbol('='), expr, token('semicolon')),
+    seq(token('variable'), many(pattern), symbol('='), expr, token('semicolon')),
     ([f, args, _eq, body, _semi]) => ({
         type: 'fun',
         name: f.name,
-        args: args.map(a => a.name),
+        args,
         body: body,
-        curried: lambdaOf(args.map(a => a.name), body)
+        curried: lambdaOf(args, body)
     })
 );
 

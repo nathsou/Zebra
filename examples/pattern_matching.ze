@@ -1,0 +1,13 @@
+
+data Bool = True | False;
+data Maybe a = None | Some a;
+data Pair a b = MkPair a b;
+data List a = Nil | Cons a (List a);
+
+isNone None = True;
+
+isSome (Some x) = True;
+
+-- main = let lst = Nil in MkPair (Cons 3 lst) (Cons False lst);
+main = let rec snd (MkPair a b) = b in snd (MkPair 1 (Cons 3 Nil));
+-- main = MkPair (isSome (Some 3)) (isSome (Some True));

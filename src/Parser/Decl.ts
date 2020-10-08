@@ -1,4 +1,5 @@
 import { showMonoTy, TyConst, TyVar } from "../Inferencer/Types.ts";
+import { Pattern } from "../Interpreter/Pattern.ts";
 // Declarations are expressions affecting the global environment
 import { Expr, LambdaExpr, showExpr } from "./Expr.ts";
 
@@ -7,7 +8,7 @@ export type Decl = FuncDecl | DataTypeDecl;
 export type FuncDecl = {
     type: 'fun',
     name: string,
-    args: string[],
+    args: Pattern[],
     body: Expr,
     curried: LambdaExpr
 };

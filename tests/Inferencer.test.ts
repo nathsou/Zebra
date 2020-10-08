@@ -1,12 +1,13 @@
 import { assert } from "https://deno.land/std@0.73.0/testing/asserts.ts";
 import { boolTy, funTy, intTy } from "../src/Inferencer/FixedTypes.ts";
-import { inferExprType } from "../src/Inferencer/Inferencer.ts";
-import { MonoTy, polyTy, showMonoTy, TypeEnv } from "../src/Inferencer/Types.ts";
+import { collectDeclTypes, inferExprType, registerDeclTypes } from "../src/Inferencer/Inferencer.ts";
+import { MonoTy, polyTy, showMonoTy, tyConst, TypeEnv, tyVar } from "../src/Inferencer/Types.ts";
 import { unify } from "../src/Inferencer/Unification.ts";
 import { parse } from "../src/Parser/Combinators.ts";
-import { expr } from "../src/Parser/Parser.ts";
-import { isSome } from "../src/Utils/Mabye.ts";
-import { bind, isError, ok } from "../src/Utils/Result.ts";
+import { FuncDecl } from "../src/Parser/Decl.ts";
+import { expr, program } from "../src/Parser/Parser.ts";
+import { isSome, Maybe } from "../src/Utils/Mabye.ts";
+import { bind, fold, isError, ok } from "../src/Utils/Result.ts";
 
 const gamma: TypeEnv = {
     'True': polyTy(boolTy),
@@ -22,6 +23,28 @@ const assertType = (exp: string, ty: MonoTy): void => {
         return bind(inferExprType(e, gamma), tau => {
             assertSameTypes(tau, ty);
             return ok('');
+        });
+    });
+
+    if (isError(res)) {
+        throw new Error(res.value);
+    }
+};
+
+const assertMainType = (prog: string, ty: MonoTy): void => {
+    const res = bind(parse(prog, program), decls => {
+
+        const main = decls.find(f => f.type === 'fun' && f.name === 'main') as Maybe<FuncDecl>;
+
+        assert(isSome(main));
+
+        const gamma0 = registerDeclTypes(decls);
+
+        return bind(fold(decls, (gamma, decl) => collectDeclTypes(gamma, decl), gamma0), gamma => {
+            return bind(inferExprType(main.body, gamma), tau => {
+                assertSameTypes(tau, ty);
+                return ok('');
+            });
         });
     });
 
@@ -134,5 +157,51 @@ Deno.test('infer let rec in type', () => {
             in aux n 3
         in is_prime 1789`,
         boolTy
+    );
+});
+
+Deno.test('infer sum types', () => {
+    assertMainType(`
+        data List a = Nil | Cons a (List a);
+        main = let lst = Nil in lst;
+    `,
+        tyConst('List', tyVar(0))
+    );
+
+    assertMainType(`
+        data List a = Nil | Cons a (List a);
+        data Bool = True | False;
+        data Pair a b = MkPair a b;
+
+        main = let lst = Nil in MkPair (Cons 3 lst) (Cons False lst);
+    `,
+        tyConst('Pair', tyConst('List', intTy), tyConst('List', boolTy))
+    );
+
+    assertMainType(`
+        data List a = Nil | Cons a (List a);
+        data Pair a b = MkPair a b;
+
+        main = let MkPair fst snd = MkPair 1 (Cons 3 Nil) in snd;
+    `,
+        tyConst('List', intTy)
+    );
+
+    assertMainType(`
+        data List a = Nil | Cons a (List a);
+        data Pair a b = MkPair a b;
+
+        main = let MkPair fst snd = MkPair 1 (Cons 3 Nil) in fst;
+    `,
+        intTy
+    );
+
+    assertMainType(`
+        data List a = Nil | Cons a (List a);
+        data Pair a b = MkPair a b;
+
+        main = let rec snd (MkPair a b) = b in snd (MkPair 1 (Cons 3 Nil));
+    `,
+        tyConst('List', intTy)
     );
 });

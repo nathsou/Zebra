@@ -71,7 +71,7 @@ export const freshInstance = ({ polyVars, ty }: PolyTy): MonoTy => {
  */
 export const generalizeTy = (env: TypeEnv, ty: MonoTy): PolyTy => {
     const envFreeVars = freeVarsEnv(env);
-    const polyVars = [...freeVarsMonoTy(ty)].filter(x => envFreeVars.has(x));
+    const polyVars = [...freeVarsMonoTy(ty)].filter(x => !envFreeVars.has(x));
     return polyTy(ty, ...polyVars);
 };
 

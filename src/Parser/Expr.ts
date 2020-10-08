@@ -1,3 +1,4 @@
+import { Pattern, showPattern } from "../Interpreter/Pattern.ts";
 
 export type Expr = AtomicExpr | BinopExpr | LetInExpr | LetRecInExpr |
     LambdaExpr | IfThenElseExpr | AppExpr;
@@ -23,13 +24,13 @@ export type IntegerExpr = {
 
 export type LambdaExpr = {
     type: 'lambda',
-    arg: string,
+    arg: Pattern,
     body: Expr
 };
 
 export type LetInExpr = {
     type: 'let_in',
-    left: string,
+    left: Pattern,
     middle: Expr,
     right: Expr
 };
@@ -37,7 +38,7 @@ export type LetInExpr = {
 export type LetRecInExpr = {
     type: 'let_rec_in',
     funName: string,
-    arg: string,
+    arg: Pattern,
     middle: Expr,
     right: Expr
 };
@@ -76,11 +77,11 @@ export const showExpr = (expr: Expr): string => {
         case 'binop':
             return `(${showExpr(expr.left)} ${expr.operator} ${showExpr(expr.right)})`;
         case 'let_in':
-            return `let ${expr.left} = ${showExpr(expr.middle)} in ${showExpr(expr.right)}`;
+            return `let ${showPattern(expr.left)} = ${showExpr(expr.middle)} in ${showExpr(expr.right)}`;
         case 'let_rec_in':
-            return `let rec ${expr.funName} ${expr.arg} = ${showExpr(expr.middle)} in ${showExpr(expr.right)}`;
+            return `let rec ${expr.funName} ${showPattern(expr.arg)} = ${showExpr(expr.middle)} in ${showExpr(expr.right)}`;
         case 'lambda':
-            return `λ${expr.arg} -> ${showExpr(expr.body)}`;
+            return `λ${showPattern(expr.arg)} -> ${showExpr(expr.body)}`;
         case 'if_then_else':
             return `if ${showExpr(expr.cond)} then ${showExpr(expr.thenBranch)} else ${showExpr(expr.elseBranch)}`;
         case 'app':
@@ -97,9 +98,9 @@ export const showExpr = (expr: Expr): string => {
 /**
  * creates a curried lambda expression from a list of arguments and the body
  */
-export const lambdaOf = (args: string[], body: Expr): LambdaExpr => lambdaAux([...args].reverse(), body);
+export const lambdaOf = (args: Pattern[], body: Expr): LambdaExpr => lambdaAux([...args].reverse(), body);
 
-const lambdaAux = (args: string[], body: Expr): LambdaExpr => {
+const lambdaAux = (args: Pattern[], body: Expr): LambdaExpr => {
     if (args.length === 0) return { type: 'lambda', arg: '_', body };
     if (args.length === 1) return { type: 'lambda', arg: args[0], body };
     const [h, tl] = [args[0], args.slice(1)];

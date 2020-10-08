@@ -1,8 +1,10 @@
 import { Decl } from "../Parser/Decl.ts";
 import { Expr, lambdaOf, TyConstExpr } from "../Parser/Expr.ts";
-import { emptyEnv, envAdd, envGet, envHas } from "../Utils/Env.ts";
+import { emptyEnv, envAdd, envGet, envHas, envSum } from "../Utils/Env.ts";
+import { isNone } from "../Utils/Mabye.ts";
 import { bind, error, mapResult, ok, Result } from "../Utils/Result.ts";
-import { ClosureVal, RecVarVal, ty, ValEnv, Value, valuesEq, ValueTypeMap } from "./Value.ts";
+import { showPattern, unifyPattern } from "./Pattern.ts";
+import { ClosureVal, RecVarVal, showValue, ty, ValEnv, Value, valuesEq, ValueTypeMap } from "./Value.ts";
 
 const freshVar = (prefix: string, env: ValEnv): string => {
     if (!envHas(env, prefix)) return prefix;
@@ -127,7 +129,13 @@ const evalExpr = (expr: Expr, env: ValEnv): EvalResult => {
             }
         case 'let_in':
             return bind(evalExpr(expr.middle, env), val => {
-                const env2 = envAdd(env, expr.left, val);
+                const sig = unifyPattern(expr.left, val);
+
+                if (isNone(sig)) {
+                    return error(`value "${showValue(val)}" does not match with pattern "${showPattern(expr.left)}"`);
+                }
+
+                const env2 = envSum(env, sig);
                 return evalExpr(expr.right, env2);
             });
         case 'let_rec_in':
@@ -146,8 +154,14 @@ const evalExpr = (expr: Expr, env: ValEnv): EvalResult => {
         case 'app':
             return bind(checkType(evalExpr(expr.lhs, env), 'closure'), f => {
                 return bind(evalExpr(expr.rhs, env), val => {
-                    const v = freshVar(f.arg, f.env);
-                    return evalExpr(f.body, envAdd(f.env, v, val));
+                    const sig = unifyPattern(f.arg, val);
+
+                    if (isNone(sig)) {
+                        return error(`value "${showValue(val)}" does not match with pattern "${showPattern(f.arg)}"`);
+                    }
+
+                    const env2 = envSum(f.env, sig);
+                    return evalExpr(f.body, env2);
                 });
             });
     }
