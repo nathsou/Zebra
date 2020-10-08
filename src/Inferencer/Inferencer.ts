@@ -1,10 +1,11 @@
+import { assert } from "https://deno.land/std@0.73.0/testing/asserts.ts";
 import { Decl } from "../Parser/Decl.ts";
 import { Expr, showExpr } from "../Parser/Expr.ts";
 import { emptyEnv, envAdd, envGet, envHas } from "../Utils/Env.ts";
 import { isNone } from "../Utils/Mabye.ts";
-import { bind, error, fold, ok, Result } from "../Utils/Result.ts";
+import { bind, error, ok, Result } from "../Utils/Result.ts";
 import { binopTy, boolTy, constantTy, funReturnTy, funTy, unitTy } from "./FixedTypes.ts";
-import { freshInstance, freshTyVar, generalizeTy, isTyConst, MonoTy, PolyTy, polyTy, resetTyVars, showMonoTy, showPolyTy, tyConst, TypeEnv } from "./Types.ts";
+import { freshInstance, freshTyVar, generalizeTy, isTyConst, MonoTy, PolyTy, polyTy, resetTyVars, showMonoTy, showPolyTy, showTypeEnv, tyConst, TypeEnv } from "./Types.ts";
 import { showSubst, substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "./Unification.ts";
 
 export type TypeError = string;
@@ -49,7 +50,9 @@ const collectExprTypeSubsts = (env: TypeEnv, expr: Expr, tau: MonoTy): Result<Ty
                 throw new Error(`unbound variable "${expr.name}"`);
             }
 
-            return checkedUnify(tau, freshInstance(envGet(env, expr.name)), expr);
+            const ty = freshInstance(envGet(env, expr.name));
+
+            return checkedUnify(tau, ty, expr);
         case 'binop':
             {
                 const tau_ = binopTy(expr.operator);
@@ -145,7 +148,7 @@ const collectExprTypeSubsts = (env: TypeEnv, expr: Expr, tau: MonoTy): Result<Ty
 
                     // the type of the variant is the last type
                     // of the variant constructor
-                    const variantTy = funReturnTy(constructorTy.ty);
+                    const variantTy = freshInstance(polyTy(funReturnTy(constructorTy.ty), ...constructorTy.polyVars));
 
                     return checkedUnify(tau, variantTy, expr);
                 } else if (expr.name === '()') {
@@ -169,12 +172,17 @@ export const registerDeclTypes = (decls: Decl[]): TypeEnv => {
                 }
             case 'datatype':
                 {
-                    const ty = tyConst(decl.name);
+                    const ty = tyConst(decl.name, ...decl.typeVars);
 
                     for (const variant of decl.variants) {
-                        const variantTy = variant.args.length === 0 ? ty : funTy(variant.args[0], ...variant.args.slice(1), ty);
-                        // console.log(variant.name, ':', showMonoTy(variantTy));
-                        gamma = envAdd(gamma, variant.name, polyTy(variantTy));
+                        const variantTy = variant.args.length === 0 ?
+                            ty :
+                            funTy(variant.args[0], ...variant.args.slice(1), ty);
+
+                        assert(isTyConst(variantTy));
+
+                        const realType = polyTy(tyConst(variantTy.name, ...variantTy.args), ...decl.typeVars);
+                        gamma = envAdd(gamma, variant.name, realType);
                     }
                     break;
                 }

@@ -1,10 +1,14 @@
 
-data List = Nil | Cons Int List;
 data Bool = True | False;
+data List a = Nil | Cons a (List a);
+data Maybe a = None | Some a;
+data Either a b = Left a | Right b;
 data Nat = Z | S Nat;
+
+either b = if b then Left 3 else Right False;
 
 natOfInt n = if n == 0 then Z else S (natOfInt (n - 1));
 
 range n = if n == 0 then (Cons 0 Nil) else Cons n (range (n - 1));
 
-main = range 27;
+main = (range 100);

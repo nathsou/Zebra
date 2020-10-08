@@ -1,4 +1,4 @@
-import { showMonoTy, TyConst } from "../Inferencer/Types.ts";
+import { showMonoTy, TyConst, TyVar } from "../Inferencer/Types.ts";
 // Declarations are expressions affecting the global environment
 import { Expr, LambdaExpr, showExpr } from "./Expr.ts";
 
@@ -14,6 +14,7 @@ export type FuncDecl = {
 
 export type DataTypeDecl = {
     type: 'datatype',
+    typeVars: TyVar[],
     name: string,
     variants: TyConst[]
 };
@@ -23,6 +24,6 @@ export const showDecl = (decl: Decl): string => {
         case 'fun':
             return `${decl.name} ${decl.args.join(' ')} = ${showExpr(decl.body)}`;
         case 'datatype':
-            return `data ${decl.name} = \n` + decl.variants.map(v => '  | ' + showMonoTy(v)).join('\n');
+            return `data ${decl.name} ${decl.typeVars.map(showMonoTy).join(' ')} = \n` + decl.variants.map(v => '  | ' + showMonoTy(v)).join('\n');
     }
 };

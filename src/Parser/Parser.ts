@@ -1,4 +1,5 @@
-import { MonoTy, TyConst, tyConst, typeVarNamer, TyVar } from "../Inferencer/Types.ts";
+import { MonoTy, polyTy, TyConst, tyConst, typeVarNamer, TyVar } from "../Inferencer/Types.ts";
+import { substituteMono, substitutePoly } from "../Inferencer/Unification.ts";
 import { alt, keyword, leftassoc, many, map, oneOf, parens, Parser, sepBy, seq, some, symbol, token } from "./Combinators.ts";
 import { Decl } from "./Decl.ts";
 import { Expr, IntegerExpr, lambdaOf, VarExpr } from "./Expr.ts";
@@ -14,14 +15,15 @@ const integer: Parser<IntegerExpr> = map(token('integer'), ({ value }) => ({
     type: 'constant', kind: 'integer', value
 }));
 
-const variable: Parser<VarExpr> = map(token('identifier'), ({ name }) => ({ type: 'variable', name }));
+const variable: Parser<VarExpr> = map(token('variable'), ({ name }) => ({ type: 'variable', name }));
+const identifier: Parser<VarExpr> = map(token('identifier'), ({ name }) => ({ type: 'variable', name }));
 
 const unit: Parser<Expr> = map(
     seq(token('lparen'), token('rparen')),
     () => ({ type: 'tyconst', name: '()', args: [] })
 );
 
-const atomic: Parser<Expr> = oneOf(integer, variable, unit, parens(exp));
+const atomic: Parser<Expr> = oneOf(integer, variable, identifier, unit, parens(exp));
 
 const factor: Parser<Expr> = leftassoc(
     atomic,
@@ -78,7 +80,7 @@ export const expr: Parser<Expr> = lambda;
 // declarations
 
 const funDecl: Parser<Decl> = map(
-    seq(token('identifier'), many(variable), symbol('='), expr, token('semicolon')),
+    seq(token('variable'), many(variable), symbol('='), expr, token('semicolon')),
     ([f, args, _eq, body, _semi]) => ({
         type: 'fun',
         name: f.name,
@@ -90,19 +92,33 @@ const funDecl: Parser<Decl> = map(
 
 const tyVarNames = typeVarNamer();
 
-const typeVar: Parser<TyVar> = map(token('identifier'), ({ name }) => tyVarNames(name));
+const typeVar: Parser<TyVar> = map(token('variable'), ({ name }) => tyVarNames(name));
 
 const typeConst: Parser<TyConst> = map(
-    seq(token('identifier'), some(() => alt(map(token('identifier'), ({ name }) => tyConst(name)), parens(() => type)))),
+    seq(token('identifier'),
+        some(() => alt(
+            map(token('identifier'), ({ name }) => tyConst(name)),
+            typeVar,
+            parens(() => type)
+        ))
+    ),
     ([f, args]) => tyConst(f.name, ...args)
 );
 
 const type: Parser<MonoTy> = oneOf(typeVar, typeConst);
 
 const dataTypeDecl: Parser<Decl> = alt(map(
-    seq(keyword('data'), token('identifier'), symbol('='), sepBy(typeConst, 'pipe'), token('semicolon')),
-    ([_dt, f, _eq, variants, _semi]) => ({
+    seq(
+        keyword('data'),
+        token('identifier'),
+        some(token('variable')),
+        symbol('='),
+        sepBy(typeConst, 'pipe'),
+        token('semicolon')
+    ),
+    ([_dt, f, typeVars, _eq, variants, _semi]) => ({
         type: 'datatype',
+        typeVars: typeVars.map(tv => tyVarNames(tv.name)),
         name: f.name,
         variants
     })

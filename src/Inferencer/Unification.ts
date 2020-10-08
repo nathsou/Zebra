@@ -8,19 +8,19 @@ export const unify = (s: MonoTy, t: MonoTy): Maybe<TypeSubst> => {
     return unifyMany([[s, t]]);
 };
 
-export function substituteMono(x: TyVar, sig: TypeSubst): MonoTy;
-export function substituteMono(t: TyConst, sig: TypeSubst): TyConst;
-export function substituteMono(m: MonoTy, sig: TypeSubst): MonoTy;
-export function substituteMono(m: MonoTy, sig: TypeSubst): MonoTy {
+export function substituteMono(x: TyVar, sig: TypeSubst, excluded?: TyVar[]): MonoTy;
+export function substituteMono(t: TyConst, sig: TypeSubst, excluded?: TyVar[]): TyConst;
+export function substituteMono(m: MonoTy, sig: TypeSubst, excluded?: TyVar[]): MonoTy;
+export function substituteMono(m: MonoTy, sig: TypeSubst, excluded: TyVar[] = []): MonoTy {
     if (isTyVar(m)) {
-        if (sig[m] !== undefined) {
-            return substituteMono(sig[m], sig);
+        if (sig[m] !== undefined && !excluded.includes(m)) {
+            return substituteMono(sig[m], sig, excluded);
         } else {
             return m;
         }
     }
 
-    return tyConst(m.name, ...m.args.map(t => substituteMono(t, sig)));
+    return tyConst(m.name, ...m.args.map(t => substituteMono(t, sig, excluded)));
 }
 
 export const freeVarsMonoTy = (ty: MonoTy, acc: Set<TyVar> = new Set()): Set<TyVar> => {
@@ -58,24 +58,14 @@ export const freeVarsEnv = (env: TypeEnv): Set<TyVar> => {
     return vs;
 };
 
-const freshTyVarInSubst = (sig: TypeSubst): TyVar => {
-    return Math.max(...Object.keys(sig).map(x => parseInt(x))) + 1;
-};
-
 const renameTyVars = (ty: MonoTy, rename: (x: TyVar) => TyVar): MonoTy => {
     if (isTyVar(ty)) return rename(ty);
     return tyConst(ty.name, ...ty.args.map(t => renameTyVars(t, rename)));
 };
 
-export const substitutePoly = ({ polyVars, ty }: PolyTy, sig: TypeSubst): PolyTy => {
-    let nextFreeVar = freshTyVarInSubst(sig);
-    const renamedTy = renameTyVars(ty, x => polyVars.includes(x) ? nextFreeVar++ : x);
-    const ty2 = substituteMono(renamedTy, sig);
-    const fvs = freeVarsMonoTy(ty2);
-    const boundVars = polyVars.filter(v => fvs.has(v));
-
-    return polyTy(ty2, ...boundVars);
-};
+export function substitutePoly(t: PolyTy, sig: TypeSubst): PolyTy {
+    return { polyVars: t.polyVars, ty: substituteMono(t.ty, sig, t.polyVars) };
+}
 
 export const substituteEnv = (env: TypeEnv, sig: TypeSubst): TypeEnv => {
     return envMap(env, t => substitutePoly(t, sig));

@@ -2,13 +2,14 @@ export type Token =
     | Punctuation
     | Symbol
     | Identifier
+    | Variable
     | Integer
     | Keyword
     | Comment
     | EOF;
 
 export type TokenType =
-    Punctuation['type'] | 'symbol' | 'keyword' | 'identifier' | 'integer' | 'comment' | 'EOF';
+    Punctuation['type'] | 'symbol' | 'keyword' | 'variable' | 'identifier' | 'integer' | 'comment' | 'EOF';
 
 export type Punctuation =
     | Tok<'lparen'>
@@ -34,6 +35,10 @@ type Symbol = Tok<'symbol', {
 }>;
 
 type Identifier = Tok<'identifier', {
+    name: string
+}>;
+
+type Variable = Tok<'variable', {
     name: string
 }>;
 
@@ -69,6 +74,7 @@ const tokenSymbs = {
 export const showToken = (t: Token): string => {
     switch (t.type) {
         case 'identifier':
+        case 'variable':
             return t.name;
         case 'comment':
             return `% ${t.value}`;
