@@ -1,7 +1,7 @@
 import { intTy, tupleTy, uncurryFun } from "../Inferencer/FixedTypes.ts";
-import { freshTyVar, MonoTy, polyTy, PolyTy, showMonoTy, TypeEnv } from "../Inferencer/Types.ts";
+import { freshInstance, freshTyVar, MonoTy, polyTy, PolyTy, showMonoTy, TypeEnv } from "../Inferencer/Types.ts";
 import { substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "../Inferencer/Unification.ts";
-import { envGet } from "../Utils/Env.ts";
+import { envGet, envHas } from "../Utils/Env.ts";
 import { isNone, Maybe, None } from "../Utils/Mabye.ts";
 import { bind, error, fold, ok, Result } from "../Utils/Result.ts";
 import { Value } from "./Value.ts";
@@ -94,9 +94,15 @@ export const collectPatternSubst = (
 ): Result<TypeSubst, string> => {
 
     if (isVar(p)) {
-        const ty = freshTyVar();
-        vars[p] = polyTy(ty);
-        return checkedUnify(tau, ty, p);
+        if (envHas(env, p)) {
+            return checkedUnify(tau, freshInstance(envGet(env, p)), p);
+        } else if (vars[p] !== undefined) {
+            return checkedUnify(tau, freshInstance(vars[p]), p);
+        } else {
+            const ty = freshTyVar();
+            vars[p] = polyTy(ty);
+            return checkedUnify(tau, ty, p);
+        }
     }
 
     if (p.name === '_') {
@@ -111,7 +117,12 @@ export const collectPatternSubst = (
     const constructorTy = p.name === 'tuple' ?
         tupleTy(p.args.length) :
         envGet(env, p.name);
-    const tys = uncurryFun(constructorTy.ty);
+
+    if (isNone(constructorTy)) {
+        return error(`unknown variant: ${p.name} in pattern "${showPattern(p)}"`);
+    }
+
+    const tys = uncurryFun(freshInstance(constructorTy));
     const retTy = tys.pop() as MonoTy;
 
     const res = fold(tys, ([sig_i, gamma_i], tau_i, i) => {
@@ -124,7 +135,9 @@ export const collectPatternSubst = (
     }, [{} as TypeSubst, env] as const);
 
     return bind(res, ([sig_n]) => {
-        return checkedUnify(substituteMono(retTy, sig_n), substituteMono(tau, sig_n), p);
+        return bind(checkedUnify(substituteMono(retTy, sig_n), substituteMono(tau, sig_n), p), sig2 => {
+            return ok(substCompose(sig2, sig_n));
+        });
     });
 };
 

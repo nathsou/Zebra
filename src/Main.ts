@@ -1,13 +1,13 @@
 import { CoreFuncDecl } from "./Core/CoreDecl.ts";
 import { casifyFunctionDeclarations } from "./Core/Simplifier.ts";
-import { collectDeclTypes, inferExprType, registerDeclTypes } from "./Inferencer/Inferencer.ts";
-import { showMonoTy } from "./Inferencer/Types.ts";
+import { inferExprType, registerDeclTypes } from "./Inferencer/Inferencer.ts";
+import { canonicalizeTyVars, showMonoTy } from "./Inferencer/Types.ts";
 import { interpret, registerDecl } from "./Interpreter/Interpreter.ts";
 import { showValue } from "./Interpreter/Value.ts";
 import { parse } from "./Parser/Combinators.ts";
 import { program } from "./Parser/Parser.ts";
 import { isNone, Maybe } from "./Utils/Mabye.ts";
-import { bind, fold, ok } from "./Utils/Result.ts";
+import { bind, ok } from "./Utils/Result.ts";
 
 const run = (source: string): void => {
     try {
@@ -21,13 +21,12 @@ const run = (source: string): void => {
                 throw new Error(`main function not found`);
             }
 
-            const gamma0 = registerDeclTypes(coreProg);
-
-            return bind(fold(coreProg, (gamma, decl) => collectDeclTypes(gamma, decl), gamma0), gamma => {
+            return bind(registerDeclTypes(coreProg), gamma => {
                 return bind(inferExprType(main.body, gamma), ty => {
                     const env = registerDecl(coreProg);
                     return bind(interpret(main.body, env), res => {
-                        return ok(showValue(res) + ' : ' + showMonoTy(ty));
+                        const niceTy = canonicalizeTyVars(ty);
+                        return ok(showValue(res) + ' : ' + showMonoTy(niceTy));
                     });
                 });
             });

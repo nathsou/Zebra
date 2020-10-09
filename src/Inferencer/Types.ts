@@ -139,3 +139,17 @@ export const showPolyTy = (t: PolyTy): string => {
 export const showTypeEnv = (env: TypeEnv): string => {
     return `{ ${Object.entries(env).map(([x, ty]) => `${x} : ${showPolyTy(ty)}`).join(', ')} }`;
 };
+
+export const canonicalizeTyVars = (t: MonoTy, renameMap: Map<TyVar, TyVar> = new Map()): MonoTy => {
+    if (isTyVar(t)) {
+        if (renameMap.has(t)) {
+            return renameMap.get(t) as TyVar;
+        } else {
+            const n = renameMap.size;
+            renameMap.set(t, n);
+            return n;
+        }
+    }
+
+    return tyConst(t.name, ...t.args.map(a => canonicalizeTyVars(a, renameMap)));
+};

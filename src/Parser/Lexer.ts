@@ -74,12 +74,12 @@ export function* lex(input: string): Iterable<Result<Token, LexerError>> {
         }
 
         // variables
-        if (/[a-z_]/.test(cur)) {
+        if (/[a-z_']/.test(cur)) {
             let f = '';
             do {
                 f += current();
                 advance();
-            } while (/[a-zA-Z0-9_]/.test(current() ?? ''));
+            } while (/[a-zA-Z0-9_']/.test(current() ?? ''));
 
             yield ok({ type: 'variable', name: f, ...pos });
             continue;

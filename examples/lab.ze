@@ -1,19 +1,18 @@
 
--- data Bool = True | False;
--- data Maybe a = None | Some a;
-
--- isNone None = True;
--- isNone (Some _) = False;
-
--- main = isNone (Some 3);
-
 data Bool = True | False;
+data List a = Nil | Cons a (List a);
+data Maybe a = None | Some a;
+
+filter _ Nil = Nil;
+filter f (Cons h tl) =
+    let next = filter f tl in
+    if f h then Cons h next else next;
 
 isPrime n =
     if n == 2 then True
     else if or (n < 2) (n % 2 == 0) then False
     else let rec aux n i =
-        if i * i >= n then True
+        if i * i > n then True
         else if n % i == 0 then False
         else aux n (i + 2)
     in aux n 3;
@@ -21,11 +20,31 @@ isPrime n =
 or False False = False;
 or _ _ = True;
 
-pow n p = if p == 0 then 1 else n * (pow n (p - 1));
+pow n 0 = 1;
+pow n p = n * (pow n (p - 1));
 
 isMersennePrime p = if isPrime p then isPrime ((pow 2 p) - 1) else False;
 
-even n = if n == 0 then True else odd (n - 1);
-odd n = if n == 0 then False else even (n - 1);
+even 0 = True;
+even n = odd (n - 1);
 
-main = or;
+odd 0 = False;
+odd n = even (n - 1);
+
+head (Cons h _) = h;
+tail (Cons _ tl) = tl;
+
+map _ Nil = Nil;
+map f (Cons h tl) = Cons (f h) (map f tl);
+
+range n = range' n Nil;
+range' 0 acc = acc;
+range' n acc = range' (n - 1) (Cons n acc);
+
+len Nil = 0;
+len (Cons _ tl) = (len tl) + 1;
+
+mapMaybe _ None = None;
+mapMaybe f (Some x) = Some (f x);
+
+main = mapMaybe;

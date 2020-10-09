@@ -1,6 +1,6 @@
 import { envMap } from "../Utils/Env.ts";
 import { Maybe, None, Some } from "../Utils/Mabye.ts";
-import { isTyVar, MonoTy, monoTypesEq, polyTy, PolyTy, showMonoTy, showTyVar, TyConst, tyConst, TypeEnv, TyVar } from "./Types.ts";
+import { isTyVar, MonoTy, monoTypesEq, PolyTy, showMonoTy, showTyVar, TyConst, tyConst, TypeEnv, TyVar } from "./Types.ts";
 
 export type TypeSubst = Record<TyVar, MonoTy>;
 
@@ -14,6 +14,7 @@ export function substituteMono(m: MonoTy, sig: TypeSubst, excluded?: TyVar[]): M
 export function substituteMono(m: MonoTy, sig: TypeSubst, excluded: TyVar[] = []): MonoTy {
     if (isTyVar(m)) {
         if (sig[m] !== undefined && !excluded.includes(m)) {
+            if (sig[m] === m) return m;
             return substituteMono(sig[m], sig, excluded);
         } else {
             return m;

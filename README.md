@@ -6,7 +6,7 @@
 
 - [x] polymorphic sum types
 - [x] pattern matching
-- [ ] tuples
+- [x] tuples
 - [ ] automatic semicolons
 - [ ] JS compiler
 - [ ] records
