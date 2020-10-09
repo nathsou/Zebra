@@ -1,4 +1,12 @@
 
+-- data Bool = True | False;
+-- data Maybe a = None | Some a;
+
+-- isNone None = True;
+-- isNone (Some _) = False;
+
+-- main = isNone (Some 3);
+
 data Bool = True | False;
 
 isPrime n =
@@ -10,7 +18,8 @@ isPrime n =
         else aux n (i + 2)
     in aux n 3;
 
-or a b = if a then True else b;
+or False False = False;
+or _ _ = True;
 
 pow n p = if p == 0 then 1 else n * (pow n (p - 1));
 
@@ -19,4 +28,4 @@ isMersennePrime p = if isPrime p then isPrime ((pow 2 p) - 1) else False;
 even n = if n == 0 then True else odd (n - 1);
 odd n = if n == 0 then False else even (n - 1);
 
-main = isMersennePrime 17;
+main = or;

@@ -113,7 +113,7 @@ export const showMonoTy = (t: MonoTy): string => {
 export const showTyVar = (v: TyVar): string => {
     const l = String.fromCharCode(945 + v % 23);
 
-    if (v > 23) {
+    if (v >= 23) {
         return l + `${Math.floor(v / 23)}`;
     }
 
@@ -123,11 +123,12 @@ export const showTyVar = (v: TyVar): string => {
 export const showTyConst = (v: TyConst): string => {
     switch (v.name) {
         case '->': return `${showMonoTy(v.args[0])} -> ${showMonoTy(v.args[1])}`;
+        case 'tuple': return `(${v.args.map(showMonoTy).join(', ')})`;
     }
 
     if (v.args.length === 0) return v.name;
 
-    return `(${v.name} ${v.args.map(a => showMonoTy(a)).join(' ')})`;
+    return `${v.name} ${v.args.map(a => showMonoTy(a)).join(' ')}`;
 };
 
 export const showPolyTy = (t: PolyTy): string => {

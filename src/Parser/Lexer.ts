@@ -15,7 +15,7 @@ const punctuations = new Map<string, Punctuation['type']>([
     ['|', 'pipe']
 ]);
 
-const keywords: KeywordType[] = ['let', 'rec', 'in', 'if', 'then', 'else', 'data'];
+const keywords: KeywordType[] = ['let', 'rec', 'in', 'if', 'then', 'else', 'data', 'case', 'of'];
 
 export type LexerError = string;
 

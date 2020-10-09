@@ -50,7 +50,7 @@ type Comment = Tok<'comment', {
     value: string
 }>;
 
-export type KeywordType = 'let' | 'rec' | 'in' | 'if' | 'then' | 'else' | 'data';
+export type KeywordType = 'let' | 'rec' | 'in' | 'if' | 'then' | 'else' | 'data' | 'case' | 'of';
 
 type Keyword = Tok<'keyword', {
     value: KeywordType

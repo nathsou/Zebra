@@ -1,9 +1,9 @@
-import { funReturnTy, intTy } from "../Inferencer/FixedTypes.ts";
-import { freshInstance, freshTyVar, MonoTy, polyTy, PolyTy, TyConst, tyConst, TypeEnv } from "../Inferencer/Types.ts";
-import { TypeSubst } from "../Inferencer/Unification.ts";
-import { Expr, TyConstExpr } from "../Parser/Expr.ts";
+import { intTy, tupleTy, uncurryFun } from "../Inferencer/FixedTypes.ts";
+import { freshTyVar, MonoTy, polyTy, PolyTy, showMonoTy, TypeEnv } from "../Inferencer/Types.ts";
+import { substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "../Inferencer/Unification.ts";
 import { envGet } from "../Utils/Env.ts";
-import { Maybe, None } from "../Utils/Mabye.ts";
+import { isNone, Maybe, None } from "../Utils/Mabye.ts";
+import { bind, error, fold, ok, Result } from "../Utils/Result.ts";
 import { Value } from "./Value.ts";
 
 export type Pattern = Var | Fun;
@@ -33,10 +33,6 @@ export const vars = (p: Pattern, acc: Set<Var> = new Set()): Set<Var> => {
     return acc;
 };
 
-// unify [(Cons h tl, Cons 3 Nil)]
-// unify [(h tl, 3 Nil)]
-// unify [(tl, Nil)] . { h -> 3 }
-// unify [] . { h -> 3, tl -> Nil }
 
 export const unifyPattern = (p: Pattern, v: Value): Maybe<ValSubst> => unifyPatternMany([[p, v]]);
 
@@ -46,11 +42,14 @@ const unifyPatternMany = (eqs: Array<[Pattern, Value]>): Maybe<ValSubst> => {
     while (eqs.length > 0) {
         const [p, v] = eqs.pop() as [Pattern, Value];
 
+
         if (isVar(p)) { // Eliminate
             const x = p;
             sig[x] = v;
             continue;
         }
+
+        if (p.name === '_') continue;
 
         switch (v.type) {
             case 'int':
@@ -77,29 +76,63 @@ const unifyPatternMany = (eqs: Array<[Pattern, Value]>): Maybe<ValSubst> => {
     return sig;
 };
 
-export const typeOfPattern = (
-    p: Pattern,
-    sig: Record<string, PolyTy>,
-    env: TypeEnv
-): PolyTy => {
-    if (isVar(p)) {
-        const tau = polyTy(freshTyVar());
-        sig[p] = tau;
-        return tau;
+export const checkedUnify = (s: MonoTy, t: MonoTy, p: Pattern): Result<TypeSubst, string> => {
+    const sig = unify(s, t);
+
+    if (isNone(sig)) {
+        return error(`cannot unify ${showMonoTy(s)} with ${showMonoTy(t)} in pattern "${showPattern(p)}"`);
     }
 
-    if (/[0-9]+/.test(p.name)) return polyTy(intTy);
+    return ok(sig);
+};
 
-    const retTy = envGet(env, p.name);
-    const ty = funReturnTy(retTy.ty) as TyConst;
+export const collectPatternSubst = (
+    env: TypeEnv,
+    p: Pattern,
+    tau: MonoTy,
+    vars: Record<string, PolyTy>
+): Result<TypeSubst, string> => {
 
-    const polyVars = retTy.polyVars.slice(p.args.length);
+    if (isVar(p)) {
+        const ty = freshTyVar();
+        vars[p] = polyTy(ty);
+        return checkedUnify(tau, ty, p);
+    }
 
-    return polyTy(tyConst(ty.name, ...p.args.map(a => typeOfPattern(a, sig, env).ty), ...polyVars), ...polyVars);
+    if (p.name === '_') {
+        return checkedUnify(tau, freshTyVar(), p);
+    }
+
+    // integers
+    if (/[0-9]+/.test(p.name)) {
+        return checkedUnify(tau, intTy, p);
+    }
+
+    const constructorTy = p.name === 'tuple' ?
+        tupleTy(p.args.length) :
+        envGet(env, p.name);
+    const tys = uncurryFun(constructorTy.ty);
+    const retTy = tys.pop() as MonoTy;
+
+    const res = fold(tys, ([sig_i, gamma_i], tau_i, i) => {
+        const sig_i_tau_i = substituteMono(tau_i, sig_i);
+        return bind(collectPatternSubst(gamma_i, p.args[i], sig_i_tau_i, vars), sig => {
+            const gamma_n = substituteEnv(gamma_i, sig);
+            const sig_n = substCompose(sig, sig_i);
+            return ok([sig_n, gamma_n] as const);
+        });
+    }, [{} as TypeSubst, env] as const);
+
+    return bind(res, ([sig_n]) => {
+        return checkedUnify(substituteMono(retTy, sig_n), substituteMono(tau, sig_n), p);
+    });
 };
 
 export const showPattern = (p: Pattern): string => {
     if (isVar(p)) return p;
     if (p.args.length === 0) return p.name;
+    if (p.name === 'tuple') {
+        return `(${p.args.map(showPattern).join(', ')})`;
+    }
     return `${p.name} ${p.args.map(showPattern).join(' ')}`;
 };

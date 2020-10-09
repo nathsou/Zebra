@@ -1,7 +1,7 @@
 import { Pattern, showPattern } from "../Interpreter/Pattern.ts";
 
 export type Expr = AtomicExpr | BinopExpr | LetInExpr | LetRecInExpr |
-    LambdaExpr | IfThenElseExpr | AppExpr;
+    LambdaExpr | IfThenElseExpr | AppExpr | CaseOfExpr;
 
 export type VarExpr = {
     type: 'variable',
@@ -65,6 +65,17 @@ export type BinopExpr = {
     right: Expr
 };
 
+export type CaseOfExprCase = {
+    pattern: Pattern,
+    expr: Expr
+};
+
+export type CaseOfExpr = {
+    type: 'case_of',
+    value: Expr,
+    cases: CaseOfExprCase[]
+};
+
 export const showExpr = (expr: Expr): string => {
     switch (expr.type) {
         case 'variable':
@@ -91,7 +102,14 @@ export const showExpr = (expr: Expr): string => {
                 return expr.name;
             }
 
+            if (expr.name === 'tuple') {
+                return `(${expr.args.map(showExpr).join(', ')})`;
+            }
+
             return `${expr.name} ${expr.args.map(a => showExpr(a)).join(' ')}`;
+        case 'case_of':
+            const cases = expr.cases.map(({ pattern, expr }) => `${showPattern(pattern)} -> ${showExpr(expr)}`);
+            return `case ${showExpr(expr.value)} of ${cases.join('  | ')}`;
     }
 };
 

@@ -1,4 +1,4 @@
-import { isSome, Maybe } from "../Utils/Mabye.ts";
+import { isSome, Maybe, None } from "../Utils/Mabye.ts";
 import { bind, error, isError, isOk, mapResult, ok, Result } from "../Utils/Result.ts";
 import { lex, LexerError } from "./Lexer.ts";
 import { showPosition, showToken, Token, TokenType, Tok, KeywordType } from "./Token.ts";
@@ -267,6 +267,12 @@ export const rightassoc = <A, B, T>(
         seq(many(l), r),
         ([tl, h]) => tl.length === 0 ? h : tl.reduce(f, h as T | B)
     );
+};
+
+export const optional = <T>(p: AnyParser<T>): Parser<Maybe<T>> => state => {
+    const res = parserOf(p)(state);
+    if (isError(res)) return ok(None);
+    return ok(res.value);
 };
 
 /**

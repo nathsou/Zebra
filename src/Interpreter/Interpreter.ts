@@ -1,18 +1,12 @@
-import { Decl } from "../Parser/Decl.ts";
-import { Expr, lambdaOf, TyConstExpr } from "../Parser/Expr.ts";
+import { CoreDecl } from "../Core/CoreDecl.ts";
+import { CoreExpr, CoreTyConstExpr } from "../Core/CoreExpr.ts";
+import { coreOf } from "../Core/Simplifier.ts";
+import { lambdaOf, showExpr } from "../Parser/Expr.ts";
 import { emptyEnv, envAdd, envGet, envHas, envSum } from "../Utils/Env.ts";
-import { isNone } from "../Utils/Mabye.ts";
+import { isSome } from "../Utils/Mabye.ts";
 import { bind, error, mapResult, ok, Result } from "../Utils/Result.ts";
-import { showPattern, unifyPattern } from "./Pattern.ts";
-import { ClosureVal, RecVarVal, showValue, ty, ValEnv, Value, valuesEq, ValueTypeMap } from "./Value.ts";
-
-const freshVar = (prefix: string, env: ValEnv): string => {
-    if (!envHas(env, prefix)) return prefix;
-
-    let n = 0;
-    while (envHas(env, `${prefix}${n}`)) { n++; };
-    return `${prefix}${n}`;
-};
+import { unifyPattern } from "./Pattern.ts";
+import { ClosureVal, RecVarVal, ty, ValEnv, Value, valuesEq, ValueTypeMap } from "./Value.ts";
 
 type EvalError = string;
 type EvalResult = Result<Value, EvalError>;
@@ -36,8 +30,8 @@ const intBinopMap = {
 };
 
 const evalIntBinop = (
-    a: Expr,
-    b: Expr,
+    a: CoreExpr,
+    b: CoreExpr,
     env: ValEnv,
     op: (a: number, b: number) => number
 ): EvalResult => {
@@ -56,8 +50,8 @@ const intBoolBinopMap = {
 };
 
 const evalIntBoolBinop = (
-    a: Expr,
-    b: Expr,
+    a: CoreExpr,
+    b: CoreExpr,
     env: ValEnv,
     op: (a: number, b: number) => boolean
 ): EvalResult => {
@@ -68,7 +62,7 @@ const evalIntBoolBinop = (
     });
 };
 
-const evalExpr = (expr: Expr, env: ValEnv): EvalResult => {
+const evalExpr = (expr: CoreExpr, env: ValEnv): EvalResult => {
     switch (expr.type) {
         case 'variable':
             const id = expr.name;
@@ -129,13 +123,7 @@ const evalExpr = (expr: Expr, env: ValEnv): EvalResult => {
             }
         case 'let_in':
             return bind(evalExpr(expr.middle, env), val => {
-                const sig = unifyPattern(expr.left, val);
-
-                if (isNone(sig)) {
-                    return error(`value "${showValue(val)}" does not match with pattern "${showPattern(expr.left)}"`);
-                }
-
-                const env2 = envSum(env, sig);
+                const env2 = envAdd(env, expr.left, val);
                 return evalExpr(expr.right, env2);
             });
         case 'let_rec_in':
@@ -154,20 +142,25 @@ const evalExpr = (expr: Expr, env: ValEnv): EvalResult => {
         case 'app':
             return bind(checkType(evalExpr(expr.lhs, env), 'closure'), f => {
                 return bind(evalExpr(expr.rhs, env), val => {
-                    const sig = unifyPattern(f.arg, val);
-
-                    if (isNone(sig)) {
-                        return error(`value "${showValue(val)}" does not match with pattern "${showPattern(f.arg)}"`);
-                    }
-
-                    const env2 = envSum(f.env, sig);
-                    return evalExpr(f.body, env2);
+                    return evalExpr(f.body, envAdd(f.env, f.arg, val));
                 });
+            });
+        case 'case_of':
+            return bind(evalExpr(expr.value, env), val => {
+                for (const { pattern, expr: e } of expr.cases) {
+                    const sig = unifyPattern(pattern, val);
+                    if (isSome(sig)) {
+                        const env2 = envSum(env, sig);
+                        return evalExpr(e, env2);
+                    }
+                }
+
+                return error(`pattern matching is not exhaustive in "${showExpr(expr)}"`);
             });
     }
 };
 
-export const registerDecl = (decls: Decl[]): ValEnv => {
+export const registerDecl = (decls: CoreDecl[]): ValEnv => {
     let env: Record<string, Value> = {};
 
     for (const decl of decls) {
@@ -196,7 +189,7 @@ export const registerDecl = (decls: Decl[]): ValEnv => {
                         };
                     } else { // compound variants
                         const args = variant.args.map((_, i) => `x${i}`);
-                        const body: TyConstExpr = {
+                        const body: CoreTyConstExpr = {
                             type: 'tyconst',
                             name: variant.name,
                             args: args.map(x => ({ type: 'variable', name: x }))
@@ -205,7 +198,7 @@ export const registerDecl = (decls: Decl[]): ValEnv => {
                         env[variant.name] = {
                             type: 'closure',
                             arg: args[0],
-                            body: args.length > 1 ? lambdaOf(args.slice(1), body) : body,
+                            body: args.length > 1 ? coreOf(lambdaOf(args.slice(1), body)) : body,
                             env
                         };
                     }
@@ -218,4 +211,4 @@ export const registerDecl = (decls: Decl[]): ValEnv => {
     return env;
 };
 
-export const interpret = (prog: Expr, env = emptyEnv<Value>()): EvalResult => evalExpr(prog, env);
+export const interpret = (prog: CoreExpr, env = emptyEnv<Value>()): EvalResult => evalExpr(prog, env);
