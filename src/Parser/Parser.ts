@@ -1,8 +1,9 @@
 import { MonoTy, TyConst, tyConst, typeVarNamer, TyVar } from "../Inferencer/Types.ts";
 import { Fun, Pattern } from "../Interpreter/Pattern.ts";
-import { alt, commas, keyword, leftassoc, many, map, oneOf, optional, parens, Parser, sepBy, seq, some, symbol, token } from "./Combinators.ts";
+import { alt, brackets, commas, keyword, leftassoc, many, map, oneOf, optional, parens, Parser, sepBy, seq, some, symbol, token } from "./Combinators.ts";
 import { Decl } from "./Decl.ts";
-import { CaseOfExpr, CaseOfExprCase, ConstantExpr, Expr, IntegerExpr, lambdaOf, TyConstExpr, VarExpr } from "./Expr.ts";
+import { CaseOfExpr, CaseOfExprCase, ConstantExpr, Expr, IntegerExpr, TyConstExpr, VarExpr } from "./Expr.ts";
+import { lambdaOf, listOf } from "./Sugar.ts";
 
 // https://www.haskell.org/onlinereport/syntax-iso.html
 
@@ -10,6 +11,7 @@ import { CaseOfExpr, CaseOfExprCase, ConstantExpr, Expr, IntegerExpr, lambdaOf, 
 
 // allows us to use expr before initialization
 const exp = () => expr;
+const pat = () => pattern;
 
 const integer: Parser<IntegerExpr> = map(token('integer'), ({ value }) => ({
     type: 'constant', kind: 'integer', value
@@ -30,40 +32,14 @@ const tuple: Parser<TyConstExpr> = alt(map(
     ([_l, h, _c, vals, _r]) => ({ type: 'tyconst', name: 'tuple', args: [h, ...vals] })
 ), unit);
 
-const atomic: Parser<Expr> = oneOf(constant, variable, identifier, tuple, parens(exp));
-
-const varPattern: Parser<Pattern> = map(token('variable'), ({ name }) => {
-    if (name === '_') {
-        return { name: '_', args: [] };
-    } else {
-        return name;
-    }
-});
-
-const constantPat: Parser<Fun> = map(constant, c => {
-    switch (c.kind) {
-        case 'integer':
-            return { name: `${c.value}`, args: [] }
-    }
-});
-
-const nullaryFunPattern: Parser<Fun> = alt(map(
-    token('identifier'),
-    f => ({ name: f.name, args: [] })
-), constantPat);
-
-const funPattern: Parser<Fun> = alt(map(
-    parens(seq(token('identifier'), some(() => pattern))),
-    ([f, args]) => ({ name: f.name, args })
-), nullaryFunPattern);
-
-const unitPat = map(seq(token('lparen'), token('rparen')), () => ({ name: 'unit', args: [] }));
-const tuplePat = map(
-    seq(token('lparen'), () => pattern, token('comma'), commas(() => pattern), token('rparen')),
-    ([_l, h, _c, vals, _r]) => ({ name: 'tuple', args: [h, ...vals] })
+const nil: Parser<Expr> = map(
+    seq(token('lbracket'), token('rbracket')),
+    () => ({ type: 'tyconst', name: 'Nil', args: [] })
 );
-const pat = oneOf(varPattern, funPattern, tuplePat, unitPat);
-const pattern: Parser<Pattern> = alt(pat, parens(pat));
+
+const list = alt(map(brackets(commas(exp)), listOf), nil);
+
+const atomic: Parser<Expr> = oneOf(constant, variable, identifier, tuple, list, parens(exp));
 
 const factor: Parser<Expr> = leftassoc(
     atomic,
@@ -83,8 +59,21 @@ const app: Parser<Expr> = alt(leftassoc(
     (lhs, rhs) => ({ type: 'app', lhs, rhs })
 ), term);
 
+const cons: Parser<Expr> = alt(map(
+    seq(app, token('cons'), () => cons),
+    ([left, _, right]) => ({
+        type: 'app',
+        lhs: {
+            type: 'app',
+            lhs: { type: 'variable', name: 'Cons' },
+            rhs: left
+        },
+        rhs: right
+    })
+), app);
+
 const comparison: Parser<Expr> = leftassoc(
-    app,
+    cons,
     seq(oneOf(symbol('=='), symbol('<'), symbol('<='), symbol('>'), symbol('>=')), app),
     (left, [op, right]) => ({ type: 'binop', operator: op.name, left, right })
 );
@@ -95,7 +84,7 @@ const ifThenElse: Parser<Expr> = alt(map(
 ), comparison);
 
 const case_: Parser<CaseOfExprCase> = map(
-    seq(pattern, token('rightarrow'), exp),
+    seq(pat, token('rightarrow'), exp),
     ([p, _, e]) => ({ pattern: p, expr: e })
 );
 
@@ -105,12 +94,12 @@ const caseOf: Parser<CaseOfExpr> = map(
 );
 
 const letIn: Parser<Expr> = alt(map(
-    seq(keyword('let'), pattern, symbol('='), exp, keyword('in'), exp),
+    seq(keyword('let'), pat, symbol('='), exp, keyword('in'), exp),
     ([_let, left, _eq, middle, _in, right]) => ({ type: 'let_in', left, middle, right })
 ), alt(caseOf, ifThenElse));
 
 const letRecIn: Parser<Expr> = alt(map(
-    seq(keyword('let'), keyword('rec'), variable, many(pattern), symbol('='), exp, keyword('in'), exp),
+    seq(keyword('let'), keyword('rec'), variable, many(pat), symbol('='), exp, keyword('in'), exp),
     ([_let, _rec, f, args, _eq, middle, _in, right]) => ({
         type: 'let_rec_in',
         funName: f.name,
@@ -121,7 +110,7 @@ const letRecIn: Parser<Expr> = alt(map(
 ), letIn);
 
 const lambda = alt(map(
-    seq(token('lambda'), many(pattern), token('rightarrow'), exp),
+    seq(token('lambda'), many(pat), token('rightarrow'), exp),
     ([_lambda, args, _arrow, body]) => lambdaOf(args, body)
 ), letRecIn);
 
@@ -130,7 +119,7 @@ export const expr: Parser<Expr> = lambda;
 // declarations
 
 const funDecl: Parser<Decl> = map(
-    seq(token('variable'), some(pattern), symbol('='), expr, token('semicolon')),
+    seq(token('variable'), some(pat), symbol('='), expr, token('semicolon')),
     ([f, args, _eq, body, _semi]) => ({
         type: 'fun',
         name: f.name,
@@ -178,3 +167,56 @@ const dataTypeDecl: Parser<Decl> = alt(map(
 export const decl: Parser<Decl> = dataTypeDecl;
 
 export const program: Parser<Decl[]> = some(decl);
+
+// patterns
+
+const parensPat = parens(pat);
+
+const varPattern: Parser<Pattern> = alt(map(token('variable'), ({ name }) => {
+    if (name === '_') {
+        return { name: '_', args: [] };
+    } else {
+        return name;
+    }
+}), parensPat);
+
+const constantPat: Parser<Pattern> = alt(map(constant, c => {
+    switch (c.kind) {
+        case 'integer':
+            return { name: `${c.value}`, args: [] }
+    }
+}), varPattern);
+
+const nullaryFunPattern: Parser<Pattern> = alt(map(
+    token('identifier'),
+    f => ({ name: f.name, args: [] })
+), constantPat);
+
+const funPattern: Parser<Pattern> = alt(map(
+    parens(seq(token('identifier'), some(() => pattern))),
+    ([f, args]) => ({ name: f.name, args })
+), nullaryFunPattern);
+
+const unitPat = alt(map(seq(token('lparen'), token('rparen')), () => ({ name: 'unit', args: [] })), funPattern);
+
+const tuplePat = alt(map(
+    seq(token('lparen'), () => pattern, token('comma'), commas(() => pattern), token('rparen')),
+    ([_l, h, _c, vals, _r]) => ({ name: 'tuple', args: [h, ...vals] })
+), unitPat);
+
+const nilPat = alt(map(seq(token('lbracket'), token('rbracket')), () => ({ name: 'Nil', args: [] })), tuplePat);
+const listPat = alt(map(
+    seq(token('lbracket'), () => commas(() => pattern), token('rbracket')),
+    ([_l, vals, _r]) => [...vals].reverse()
+        .reduce((acc, c) => ({ name: 'Cons', args: [c, acc] }), ({ name: 'Nil', args: [] }))
+), nilPat);
+
+const consPat: Parser<Pattern> = alt(map(
+    seq(listPat, token('cons'), () => consPat),
+    ([left, _, right]) => ({
+        name: 'Cons',
+        args: [left, right]
+    })
+), listPat);
+
+const pattern: Parser<Pattern> = consPat;

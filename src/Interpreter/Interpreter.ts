@@ -1,7 +1,8 @@
 import { CoreDecl } from "../Core/CoreDecl.ts";
 import { CoreExpr, CoreTyConstExpr } from "../Core/CoreExpr.ts";
 import { coreOf } from "../Core/Simplifier.ts";
-import { lambdaOf, showExpr } from "../Parser/Expr.ts";
+import { showExpr } from "../Parser/Expr.ts";
+import { lambdaOf } from "../Parser/Sugar.ts";
 import { emptyEnv, envAdd, envGet, envHas, envSum } from "../Utils/Env.ts";
 import { isSome } from "../Utils/Mabye.ts";
 import { bind, error, mapResult, ok, Result } from "../Utils/Result.ts";

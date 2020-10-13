@@ -1,6 +1,7 @@
 import { isVar } from "../Interpreter/Pattern.ts";
 import { Decl, FuncDecl } from "../Parser/Decl.ts";
-import { CaseOfExpr, Expr, lambdaOf } from "../Parser/Expr.ts";
+import { CaseOfExpr, Expr } from "../Parser/Expr.ts";
+import { lambdaOf } from "../Parser/Sugar.ts";
 import { gen } from "../Utils/Common.ts";
 import { CoreDecl, CoreFuncDecl } from "./CoreDecl.ts";
 import { CoreCaseOfExpr, CoreExpr, CoreLambdaExpr, CoreTyConstExpr } from "./CoreExpr.ts";

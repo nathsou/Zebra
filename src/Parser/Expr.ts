@@ -106,21 +106,9 @@ export const showExpr = (expr: Expr): string => {
                 return `(${expr.args.map(showExpr).join(', ')})`;
             }
 
-            return `${expr.name} ${expr.args.map(a => showExpr(a)).join(' ')}`;
+            return `(${expr.name} ${expr.args.map(a => showExpr(a)).join(' ')})`;
         case 'case_of':
             const cases = expr.cases.map(({ pattern, expr }) => `${showPattern(pattern)} -> ${showExpr(expr)}`);
             return `case ${showExpr(expr.value)} of ${cases.join('  | ')}`;
     }
-};
-
-/**
- * creates a curried lambda expression from a list of arguments and the body
- */
-export const lambdaOf = (args: Pattern[], body: Expr): LambdaExpr => lambdaAux([...args].reverse(), body);
-
-const lambdaAux = (args: Pattern[], body: Expr): LambdaExpr => {
-    if (args.length === 0) return { type: 'lambda', arg: '_', body };
-    if (args.length === 1) return { type: 'lambda', arg: args[0], body };
-    const [h, tl] = [args[0], args.slice(1)];
-    return lambdaAux(tl, { type: 'lambda', arg: h, body });
 };

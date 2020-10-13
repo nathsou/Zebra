@@ -9,6 +9,10 @@ either b = if b then Left 3 else Right False;
 
 natOfInt n = if n == 0 then Z else S (natOfInt (n - 1));
 
-range n = if n == 0 then (Cons 0 Nil) else Cons n (range (n - 1));
+reverse lst = reverse' lst [];
+reverse' [] rev = rev;
+reverse' (h :: tl) acc = reverse' tl (h :: acc);
 
-main = (range 100);
+range n = if n == 0 then [0] else n :: (range (n - 1));
+
+main = reverse (range 100);

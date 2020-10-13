@@ -3,10 +3,10 @@ data Bool = True | False;
 data List a = Nil | Cons a (List a);
 data Maybe a = None | Some a;
 
-filter _ Nil = Nil;
-filter f (Cons h tl) =
+filter _ [] = [];
+filter f (h :: tl) =
     let next = filter f tl in
-    if f h then Cons h next else next;
+    if f h then h :: next else next;
 
 isPrime n =
     if n == 2 then True
@@ -31,20 +31,23 @@ even n = odd (n - 1);
 odd 0 = False;
 odd n = even (n - 1);
 
-head (Cons h _) = h;
-tail (Cons _ tl) = tl;
+head (h :: _) = h;
+tail (_ :: tl) = tl;
 
-map _ Nil = Nil;
-map f (Cons h tl) = Cons (f h) (map f tl);
+map _ [] = [];
+map f (h :: tl) = (f h) :: (map f tl);
 
-range n = range' n Nil;
+range n = range' n [];
 range' 0 acc = acc;
-range' n acc = range' (n - 1) (Cons n acc);
+range' n acc = range' (n - 1) (n :: acc);
 
-len Nil = 0;
-len (Cons _ tl) = (len tl) + 1;
+len [] = 0;
+len (_ :: tl) = (len tl) + 1;
 
 mapMaybe _ None = None;
 mapMaybe f (Some x) = Some (f x);
 
-main = mapMaybe;
+append [] bs = bs;
+append (a :: as) bs = a :: (append as bs);
+
+main = len (range 100);

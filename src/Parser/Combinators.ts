@@ -1,7 +1,7 @@
 import { isSome, Maybe, None } from "../Utils/Mabye.ts";
 import { bind, error, isError, isOk, mapResult, ok, Result } from "../Utils/Result.ts";
 import { lex, LexerError } from "./Lexer.ts";
-import { showPosition, showToken, Token, TokenType, Tok, KeywordType } from "./Token.ts";
+import { KeywordType, showPosition, showToken, Tok, Token, TokenType } from "./Token.ts";
 
 /**
  * type returned when parsing is unsuccessful
@@ -241,6 +241,7 @@ export function oneOf<A, B, C>(a: AnyParser<A>, b: AnyParser<B>, c: AnyParser<C>
 export function oneOf<A, B, C, D>(a: AnyParser<A>, b: AnyParser<B>, c: AnyParser<C>, d: AnyParser<D>): Parser<A | B | C | D>;
 export function oneOf<A, B, C, D, E>(a: AnyParser<A>, b: AnyParser<B>, c: AnyParser<C>, d: AnyParser<D>, e: AnyParser<E>): Parser<A | B | C | D | E>;
 export function oneOf<A, B, C, D, E, F>(a: AnyParser<A>, b: AnyParser<B>, c: AnyParser<C>, d: AnyParser<D>, e: AnyParser<E>, f: AnyParser<F>): Parser<A | B | C | D | E | F>;
+export function oneOf<A, B, C, D, E, F, G>(a: AnyParser<A>, b: AnyParser<B>, c: AnyParser<C>, d: AnyParser<D>, e: AnyParser<E>, f: AnyParser<F>, g: AnyParser<G>): Parser<A | B | C | D | E | F | G>;
 export function oneOf(...ps: AnyParser<any>[]): AnyParser<any> {
     return alt(...ps);
 }
@@ -264,7 +265,7 @@ export const rightassoc = <A, B, T>(
     f: (prev: T | B, val: A) => T
 ): Parser<T | B> => {
     return map(
-        seq(many(l), r),
+        seq(some(l), r),
         ([tl, h]) => tl.length === 0 ? h : tl.reduce(f, h as T | B)
     );
 };

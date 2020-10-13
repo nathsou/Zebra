@@ -10,12 +10,12 @@ isSome (Some _) = True;
 isSome _ = False;
 
 len x0 = case x0 of
-    | Nil -> 0
-    | (Cons h tl) -> (len tl) + 1;
+    | [] -> 0
+    | (h :: tl) -> (len tl) + 1;
 
 and True True = True;
 and _ _ = False;
 
-range n = Cons n (if n == 0 then Nil else range (n - 1));
+range n = n :: (if n == 0 then Nil else range (n - 1));
 
 main = len;

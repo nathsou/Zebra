@@ -1,0 +1,11 @@
+
+data Bool = True | False;
+
+main = let isPrime = (\n ->
+    if n == 2 then True
+    else if (if (n < 2) then True else (n % 2 == 0)) then False
+    else let rec aux n i =
+        if i * i > n then True
+        else if n % i == 0 then False
+        else aux n (i + 2)
+    in aux n 3) in isPrime 17;

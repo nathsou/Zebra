@@ -12,7 +12,8 @@ const punctuations = new Map<string, Punctuation['type']>([
     [',', 'comma'],
     ['\\', 'lambda'],
     [';', 'semicolon'],
-    ['|', 'pipe']
+    ['|', 'pipe'],
+    ['::', 'cons']
 ]);
 
 const keywords: KeywordType[] = ['let', 'rec', 'in', 'if', 'then', 'else', 'data', 'case', 'of'];
