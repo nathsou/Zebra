@@ -32,6 +32,7 @@ export type CoreCaseOfExprCase = {
 export type CoreCaseOfExpr = {
     type: 'case_of',
     value: CoreExpr,
+    arity: number,
     cases: CoreCaseOfExprCase[]
 };
 

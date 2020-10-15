@@ -1,3 +1,4 @@
+import { assert } from "https://deno.land/std@0.73.0/testing/asserts.ts";
 import { isVar } from "../Interpreter/Pattern.ts";
 import { Decl, FuncDecl } from "../Parser/Decl.ts";
 import { CaseOfExpr, Expr } from "../Parser/Expr.ts";
@@ -55,6 +56,7 @@ const reducePatternMatchingToCaseOf = (fun: FuncDecl): CoreFuncDecl => {
         const caseOf: CoreCaseOfExpr = {
             type: 'case_of',
             value: testedVal,
+            arity,
             cases: [{
                 pattern: arity === 1 ? fun.args[0] : { name: 'tuple', args: fun.args },
                 expr: coreOf(fun.body)
@@ -94,6 +96,7 @@ export const coreOf = (e: Expr): CoreExpr => {
                     arg: 'x',
                     body: {
                         type: 'case_of',
+                        arity: 1,
                         value: { type: 'variable', name: 'x' },
                         cases: [{
                             pattern: e.arg,
@@ -119,6 +122,7 @@ export const coreOf = (e: Expr): CoreExpr => {
                 return {
                     type: 'case_of',
                     value: coreOf(e.middle),
+                    arity: 1,
                     cases: [{
                         pattern: e.left,
                         expr: coreOf(e.right)
@@ -148,6 +152,7 @@ export const coreOf = (e: Expr): CoreExpr => {
                     middle: {
                         type: 'case_of',
                         value: { type: 'variable', name: 'x' },
+                        arity: 1,
                         cases: [{
                             pattern: e.arg,
                             expr: coreOf(e.middle)
@@ -160,6 +165,7 @@ export const coreOf = (e: Expr): CoreExpr => {
             return {
                 type: 'case_of',
                 value: coreOf(e.value),
+                arity: e.arity,
                 cases: e.cases.map(c => ({ pattern: c.pattern, expr: coreOf(c.expr) }))
             };
         }
@@ -210,6 +216,10 @@ const casify = (name: string, funs: FuncDecl[]): FuncDecl => {
     if (funs.length === 1) return funs[0];
 
     const arity = funs[0].args.length;
+
+    // check that arity is consistent
+    assert(funs.every(f => f.args.length === arity));
+
     const args = gen(arity, n => `x${n}`);
 
     const testedVal: Expr = arity === 1 ?
@@ -219,6 +229,7 @@ const casify = (name: string, funs: FuncDecl[]): FuncDecl => {
     const caseOf: CaseOfExpr = {
         type: 'case_of',
         value: testedVal,
+        arity,
         cases: funs.map(f => ({
             pattern: f.args.length === 1 ? f.args[0] : { name: 'tuple', args: f.args },
             expr: f.body

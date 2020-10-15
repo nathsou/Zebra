@@ -73,6 +73,7 @@ export type CaseOfExprCase = {
 export type CaseOfExpr = {
     type: 'case_of',
     value: Expr,
+    arity: number,
     cases: CaseOfExprCase[]
 };
 

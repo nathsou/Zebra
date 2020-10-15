@@ -90,7 +90,7 @@ const case_: Parser<CaseOfExprCase> = map(
 
 const caseOf: Parser<CaseOfExpr> = map(
     seq(keyword('case'), exp, keyword('of'), optional(token('pipe')), sepBy(case_, 'pipe')),
-    ([_case, value, _of, _, cases]) => ({ type: 'case_of', value, cases })
+    ([_case, value, _of, _, cases]) => ({ type: 'case_of', arity: 1, value, cases })
 );
 
 const letIn: Parser<Expr> = alt(map(

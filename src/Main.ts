@@ -14,6 +14,7 @@ const run = (source: string): void => {
         const out = bind(parse(source, program), prog => {
             const coreProg = casifyFunctionDeclarations(prog);
             // console.log(coreProg.map(decl => showDecl(decl)).join('\n\n'));
+            // console.log(coreProg.map(primitiveDeclOfCoreDecl).map(showPrimDecl).join('\n\n'));
 
             const main = coreProg.find(f => f.type === 'fun' && f.name === 'main') as Maybe<CoreFuncDecl>;
 

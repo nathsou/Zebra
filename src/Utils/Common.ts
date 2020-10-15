@@ -23,3 +23,125 @@ export const gen = <T>(count: number, f: (n: number) => T): T[] => {
 
     return vals;
 };
+
+export const unreachable = (msg = ''): never => {
+    throw Error(`Code marked as unreachable was reached: ${msg}`);
+};
+
+export type Dict<T> = { [key: string]: T };
+
+export function dictSet<T>(dict: Dict<T>, key: string, value: T): Dict<T> {
+    dict[key] = value;
+    return dict;
+}
+
+export function dictHas<T>(dict: Dict<T>, key: string): boolean {
+    // https://eslint.org/docs/rules/no-prototype-builtins
+    return Object.prototype.hasOwnProperty.call(dict, key);
+}
+
+export function dictGet<T>(dict: Dict<T>, key: string): T {
+    return dict[key];
+}
+
+export function dictEntries<T>(dict: Dict<T>): [string, T][] {
+    return Object.entries(dict);
+}
+
+export function dictValues<T>(dict: Dict<T>): T[] {
+    return Object.values(dict);
+}
+
+export function dictKeys<T>(dict: Dict<T>): string[] {
+    return Object.keys(dict);
+}
+
+export function dictMap<T, U>(dict: Dict<T>, f: (val: T) => U): Dict<U> {
+    const newDict: Dict<U> = {};
+    for (const [key, val] of dictEntries(dict)) {
+        dictSet(newDict, key, f(val));
+    }
+
+    return newDict;
+}
+
+export function* zip<T, U>(as: T[], bs: U[]): IterableIterator<[T, U]> {
+    const len = Math.min(as.length, bs.length);
+
+    for (let i = 0; i < len; i++) {
+        yield [as[i], bs[i]];
+    }
+}
+
+export function some<T>(it: IterableIterator<T>, pred: (val: T) => boolean): boolean {
+    for (const val of it) {
+        if (pred(val)) return true;
+    }
+
+    return false;
+}
+
+export function every<T>(it: IterableIterator<T>, pred: (val: T) => boolean): boolean {
+    for (const val of it) {
+        if (!pred(val)) return false;
+    }
+
+    return true;
+}
+
+export function* indexed<T>(vals: T[]): IterableIterator<[T, number]> {
+    let i = 0;
+    for (const val of vals) {
+        yield [val, i++];
+    }
+}
+
+export function* range(from: number, to: number, step = 1): IterableIterator<number> {
+    for (let i = from; i < to; i += step) {
+        yield i;
+    }
+}
+
+export function* repeat<T>(val: T, count: number): IterableIterator<T> {
+    for (let i = 0; i < count; i++) {
+        yield val;
+    }
+}
+
+export function head<T>(list: T[]): T {
+    return list[0];
+}
+
+export function last<T>(list: T[]): T {
+    return list[list.length - 1];
+}
+
+export function tail<T>(list: T[]): T[] {
+    return list.slice(1);
+}
+
+export function decons<T>(list: T[]): [T, T[]] {
+    return [head(list), tail(list)];
+}
+
+export type SetLike<T> = Set<T> | Map<T, unknown>;
+
+export function setEq<T>(as: SetLike<T>, bs: SetLike<T>): boolean {
+    return as.size === bs.size && !some(as.keys(), a => !bs.has(a));
+}
+
+export function swapMut<T>(vals: T[], i: number, j: number): void {
+    if (i < 0 || j < 0 || i >= vals.length || j >= vals.length) {
+        throw new Error(`invalid swap indices, len: ${vals.length}, i: ${i}, j: ${j}`);
+    }
+
+    const tmp = vals[i];
+    vals[i] = vals[j];
+    vals[j] = tmp;
+}
+
+export function swap<T>(vals: T[], i: number, j: number): T[] {
+    const copy = [...vals];
+    swapMut(copy, i, j);
+    return copy;
+}

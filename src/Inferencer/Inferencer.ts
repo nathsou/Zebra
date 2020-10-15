@@ -173,7 +173,6 @@ const collectExprTypeSubsts = (env: TypeEnv, expr: CoreExpr, tau: MonoTy): Resul
             return bind(collectExprTypeSubsts(env, expr.value, tau_e), sig_e0 => {
                 const res = fold(expr.cases, ([sig_i, tau_i, tau_e_i], { pattern: p_n, expr: e_n }) => {
                     const vars: Record<string, PolyTy> = {};
-                    // const tau_e_n = freshTyVar();
                     return bind(collectPatternSubst(env, p_n, tau_e_i, vars), sig_p => {
                         const sig_p_i = substCompose(sig_p, sig_i);
                         const sig_p_tau_e_n = substituteMono(tau_e_i, sig_p);

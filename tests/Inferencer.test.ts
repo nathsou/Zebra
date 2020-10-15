@@ -1,14 +1,14 @@
 import { assert } from "https://deno.land/std@0.73.0/testing/asserts.ts";
 import { casifyFunctionDeclarations, coreOf } from "../src/Core/Simplifier.ts";
 import { boolTy, funTy, intTy } from "../src/Inferencer/FixedTypes.ts";
-import { collectDeclTypes, inferExprType, registerDeclTypes } from "../src/Inferencer/Inferencer.ts";
+import { inferExprType, registerDeclTypes } from "../src/Inferencer/Inferencer.ts";
 import { MonoTy, polyTy, showMonoTy, tyConst, TypeEnv, tyVar } from "../src/Inferencer/Types.ts";
 import { unify } from "../src/Inferencer/Unification.ts";
 import { parse } from "../src/Parser/Combinators.ts";
 import { FuncDecl } from "../src/Parser/Decl.ts";
 import { expr, program } from "../src/Parser/Parser.ts";
 import { isSome, Maybe } from "../src/Utils/Mabye.ts";
-import { bind, fold, isError, ok } from "../src/Utils/Result.ts";
+import { bind, isError, ok } from "../src/Utils/Result.ts";
 
 const gamma: TypeEnv = {
     'True': polyTy(boolTy),
@@ -41,9 +41,7 @@ const assertMainType = (prog: string, ty: MonoTy): void => {
 
         assert(isSome(main));
 
-        const gamma0 = registerDeclTypes(prog);
-
-        return bind(fold(prog, (gamma, decl) => collectDeclTypes(gamma, decl), gamma0), gamma => {
+        return bind(registerDeclTypes(prog), gamma => {
             return bind(inferExprType(coreOf(main.body), gamma), tau => {
                 assertSameTypes(tau, ty);
                 return ok('');
