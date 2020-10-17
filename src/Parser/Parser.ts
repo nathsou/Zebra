@@ -1,5 +1,5 @@
 import { MonoTy, TyConst, tyConst, typeVarNamer, TyVar } from "../Inferencer/Types.ts";
-import { Fun, Pattern } from "../Interpreter/Pattern.ts";
+import { Pattern } from "../Interpreter/Pattern.ts";
 import { alt, brackets, commas, keyword, leftassoc, many, map, oneOf, optional, parens, Parser, sepBy, seq, some, symbol, token } from "./Combinators.ts";
 import { Decl } from "./Decl.ts";
 import { CaseOfExpr, CaseOfExprCase, ConstantExpr, Expr, IntegerExpr, TyConstExpr, VarExpr } from "./Expr.ts";
@@ -124,8 +124,7 @@ const funDecl: Parser<Decl> = map(
         type: 'fun',
         name: f.name,
         args,
-        body: body,
-        curried: lambdaOf(args, body)
+        body: body
     })
 );
 

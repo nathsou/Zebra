@@ -50,4 +50,4 @@ mapMaybe f (Some x) = Some (f x);
 append [] bs = bs;
 append (a :: as) bs = a :: (append as bs);
 
-main = filter isPrime (range 100);
+main = len (filter isPrime (range 1000));

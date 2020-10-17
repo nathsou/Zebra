@@ -2,10 +2,9 @@ import { assert } from "https://deno.land/std@0.73.0/testing/asserts.ts";
 import { isVar } from "../Interpreter/Pattern.ts";
 import { Decl, FuncDecl } from "../Parser/Decl.ts";
 import { CaseOfExpr, Expr } from "../Parser/Expr.ts";
-import { lambdaOf } from "../Parser/Sugar.ts";
 import { gen } from "../Utils/Common.ts";
 import { CoreDecl, CoreFuncDecl } from "./CoreDecl.ts";
-import { CoreCaseOfExpr, CoreExpr, CoreLambdaExpr, CoreTyConstExpr } from "./CoreExpr.ts";
+import { CoreCaseOfExpr, CoreExpr, CoreTyConstExpr } from "./CoreExpr.ts";
 
 export const casifyFunctionDeclarations = (prog: Decl[]): CoreDecl[] => {
     const funs: FuncDecl[] = [];
@@ -38,8 +37,7 @@ const reducePatternMatchingToCaseOf = (fun: FuncDecl): CoreFuncDecl => {
             type: 'fun',
             name: fun.name,
             args: fun.args as string[],
-            body: coreOf(fun.body),
-            curried: coreOf(fun.curried) as CoreLambdaExpr
+            body: coreOf(fun.body)
         };
     } else {
         // f p1 p2 ... pn = body
@@ -67,8 +65,7 @@ const reducePatternMatchingToCaseOf = (fun: FuncDecl): CoreFuncDecl => {
             type: 'fun',
             name: fun.name,
             args,
-            body: caseOf,
-            curried: coreOf(lambdaOf(args, caseOf)) as CoreLambdaExpr
+            body: caseOf
         };
     }
 };
@@ -240,8 +237,7 @@ const casify = (name: string, funs: FuncDecl[]): FuncDecl => {
         type: 'fun',
         name,
         args,
-        body: caseOf,
-        curried: lambdaOf(args, caseOf)
+        body: caseOf
     };
 };
 

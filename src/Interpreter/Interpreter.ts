@@ -1,9 +1,11 @@
 import { CoreDecl } from "../Core/CoreDecl.ts";
 import { CoreExpr, CoreTyConstExpr } from "../Core/CoreExpr.ts";
-import { coreOf } from "../Core/Simplifier.ts";
+import { typeCheck } from "../Inferencer/TypeCheck.ts";
+import { MonoTy } from "../Inferencer/Types.ts";
+import { Decl } from "../Parser/Decl.ts";
 import { showExpr } from "../Parser/Expr.ts";
 import { lambdaOf } from "../Parser/Sugar.ts";
-import { emptyEnv, envAdd, envGet, envHas, envSum } from "../Utils/Env.ts";
+import { envAdd, envGet, envHas, envSum } from "../Utils/Env.ts";
 import { isSome } from "../Utils/Mabye.ts";
 import { bind, error, mapResult, ok, Result } from "../Utils/Result.ts";
 import { unifyPattern } from "./Pattern.ts";
@@ -167,11 +169,12 @@ export const registerDecl = (decls: CoreDecl[]): ValEnv => {
     for (const decl of decls) {
         switch (decl.type) {
             case 'fun': {
+                const curried = lambdaOf(decl.args.length > 0 ? decl.args : ['_'], decl.body);
                 const recvar: RecVarVal = {
                     type: 'recvar',
                     name: decl.name,
-                    arg: decl.curried.arg,
-                    body: decl.curried.body,
+                    arg: curried.arg,
+                    body: curried.body,
                     env
                 };
 
@@ -199,7 +202,7 @@ export const registerDecl = (decls: CoreDecl[]): ValEnv => {
                         env[variant.name] = {
                             type: 'closure',
                             arg: args[0],
-                            body: args.length > 1 ? coreOf(lambdaOf(args.slice(1), body)) : body,
+                            body: args.length > 1 ? lambdaOf(args.slice(1), body) : body,
                             env
                         };
                     }
@@ -212,4 +215,11 @@ export const registerDecl = (decls: CoreDecl[]): ValEnv => {
     return env;
 };
 
-export const interpret = (prog: CoreExpr, env = emptyEnv<Value>()): EvalResult => evalExpr(prog, env);
+export const interpret = (prog: Decl[]): Result<[value: Value, type: MonoTy], string> => {
+    return bind(typeCheck(prog), ({ ty, main, coreProg }) => {
+        const env = registerDecl(coreProg);
+        return bind(evalExpr(main.body, env), res => {
+            return ok([res, ty]);
+        });
+    });
+};

@@ -1,11 +1,2 @@
 
-data Bool = True | False;
-data List a = Nil | Cons a (List a);
-
-len [] = 0;
-len (_ :: tl) = (len tl) + 1;
-
-or False False = False;
-or _ _ = True;
-
-main = len [1, 2, 3];
+main = let (a, b) = (3, 7) in a + b;

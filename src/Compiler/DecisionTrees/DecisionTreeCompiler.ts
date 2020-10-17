@@ -1,12 +1,11 @@
 import { CoreCaseOfExpr, CoreCaseOfExprCase } from "../../Core/CoreExpr.ts";
 import { isFun, isVar, Pattern } from "../../Interpreter/Pattern.ts";
 import { Value } from "../../Interpreter/Value.ts";
-import { CaseOfExprCase } from "../../Parser/Expr.ts";
 import { decons, Dict, dictSet, gen, head, indexed, repeat, setEq, swapMut, tail, unreachable, zip } from "../../Utils/Common.ts";
 import { isSome, Maybe } from "../../Utils/Mabye.ts";
-import { primitiveOf } from "../PrimitiveCompiler/PrimitiveCompiler.ts";
-import { PrimExpr, PrimSubtermOccurence } from "../PrimitiveCompiler/PrimitiveExpr.ts";
-import { substitutePrim } from "../PrimitiveCompiler/Substitution.ts";
+import { primitiveOf } from "../Primitive/PrimitiveCompiler.ts";
+import { PrimExpr, PrimSubtermOccurence } from "../Primitive/PrimitiveExpr.ts";
+import { substitutePrim } from "../Primitive/Substitution.ts";
 import { DecisionTree, makeFail, makeLeaf, makeSwitch, Switch } from "./DecisionTree.ts";
 
 // Based on "Compiling Pattern Matching to Good Decision Trees" by Luc Maranget
@@ -32,9 +31,9 @@ export const dtPatternOf = (p: Pattern): DTPattern => {
 };
 
 const clauseMatrixRowOf = (p: Pattern): ClauseMatrixRow => {
-    if (isFun(p) && p.name === 'tuple') {
-        return p.args.map(dtPatternOf);
-    }
+    // if (isFun(p) && p.name === 'tuple') {
+    //     return p.args.map(dtPatternOf);
+    // }
 
     return [dtPatternOf(p)];
 };
@@ -82,13 +81,17 @@ export const subtermsOccurences = (
 const actionOf = ({ expr, pattern }: CoreCaseOfExprCase): PrimExpr => {
     const subst: Dict<PrimSubtermOccurence> = {};
 
-    const args = isFun(pattern) && pattern.name === 'tuple' ?
-        pattern.args :
-        [pattern];
+    // const args = isFun(pattern) && pattern.name === 'tuple' ?
+    //     pattern.args :
+    //     [pattern];
 
-    for (const [arg, idx] of indexed(args)) {
-        subtermsOccurences(arg, subst, idx);
-    }
+    const args = [pattern];
+
+    // for (const [arg, idx] of indexed(args)) {
+    //     subtermsOccurences(arg, subst, idx);
+    // }
+
+    subtermsOccurences(args[0], subst, -1);
 
     return substitutePrim(primitiveOf(expr), subst);
 };
@@ -205,8 +208,8 @@ export const compileClauseMatrix = (
     matrix: ClauseMatrix,
     signature: Set<string>
 ): DecisionTree => {
-    const isTuple = matrix.dims[1] > 1;
-    const occurences = [...gen(argsCount, i => ({ index: isTuple ? 0 : i, pos: isTuple ? [i] : [] }))];
+    // const occurences = [...gen(argsCount, i => ({ index: i, pos: [] }))];
+    const occurences = [{ index: -1, pos: [] }];
     return compileClauseMatrixAux(occurences, matrix, signature);
 };
 

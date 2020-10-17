@@ -1,5 +1,5 @@
-import { showPrim } from "../PrimitiveCompiler/PrimitiveCompiler.ts";
-import { PrimExpr, PrimTyConstExpr } from "../PrimitiveCompiler/PrimitiveExpr.ts";
+import { showPrim } from "../Primitive/PrimitiveCompiler.ts";
+import { PrimExpr, PrimTyConstExpr } from "../Primitive/PrimitiveExpr.ts";
 import { AnyPat, IndexedOccurence } from "./DecisionTreeCompiler.ts";
 
 export type Leaf = { type: 'leaf', action: PrimExpr };

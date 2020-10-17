@@ -1,21 +1,53 @@
 import { CoreDecl } from "../../Core/CoreDecl.ts";
 import { CoreExpr } from "../../Core/CoreExpr.ts";
+import { casifyFunctionDeclarations } from "../../Core/Simplifier.ts";
+import { Decl } from "../../Parser/Decl.ts";
+import { lambdaOf } from "../../Parser/Sugar.ts";
+import { gen } from "../../Utils/Common.ts";
 import { showDecisionTree } from "../DecisionTrees/DecisionTree.ts";
 import { clauseMatrixOf, compileClauseMatrix } from "../DecisionTrees/DecisionTreeCompiler.ts";
 import { PrimDecl } from "./PrimitiveDecl.ts";
-import { PrimExpr, PrimLambdaExpr } from "./PrimitiveExpr.ts";
+import { PrimExpr } from "./PrimitiveExpr.ts";
 
-export const primitiveDeclOfCoreDecl = (d: CoreDecl): PrimDecl => {
+export const primitiveProgramOf = (prog: Decl[]): PrimDecl[] => {
+    const coreProg = casifyFunctionDeclarations(prog);
+
+    const decls: PrimDecl[] = [];
+
+    for (const decl of coreProg) {
+        decls.push(...primitiveDeclOfCoreDecl(decl));
+    }
+
+    return decls;
+};
+
+const primitiveDeclOfCoreDecl = (d: CoreDecl): PrimDecl[] => {
     switch (d.type) {
         case 'fun':
-            return {
+            return [{
                 type: 'fun',
                 name: d.name,
                 args: d.args,
-                body: primitiveOf(d.body),
-                curried: primitiveOf(d.curried) as PrimLambdaExpr
-            };
-        case 'datatype': return d;
+                body: primitiveOf(d.body)
+            }];
+        case 'datatype':
+            const vs = d.variants.map(v => {
+                const args = gen(v.args.length, n => `v${n}`);
+                const val: PrimExpr = {
+                    type: 'tyconst',
+                    name: v.name,
+                    args: args.map(x => ({ type: 'variable', name: x }))
+                };
+
+                return {
+                    type: 'fun',
+                    name: v.name,
+                    args,
+                    body: val
+                } as const;
+            });
+
+            return vs;
     }
 };
 
