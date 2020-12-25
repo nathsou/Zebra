@@ -215,7 +215,10 @@ const casify = (name: string, funs: FuncDecl[]): FuncDecl => {
     const arity = funs[0].args.length;
 
     // check that arity is consistent
-    assert(funs.every(f => f.args.length === arity));
+    assert(
+        funs.every(f => f.args.length === arity),
+        `inconsistent arities for '${name}', expected ${arity} arguments`
+    );
 
     const args = gen(arity, n => `x${n}`);
 

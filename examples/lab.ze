@@ -36,7 +36,7 @@ tail (_ :: tl) = tl;
 
 map _ [] = [];
 map f (h :: tl) = (f h) :: (map f tl);
-
+ 
 range n = range' n [];
 range' 0 acc = acc;
 range' n acc = range' (n - 1) (n :: acc);

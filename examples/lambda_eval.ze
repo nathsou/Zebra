@@ -1,0 +1,118 @@
+
+data Bool = True | False;
+data List a = Nil | Cons a (List a);
+data Maybe a = None | Some a;
+data Operator =
+        Plus |
+        Minus |
+        Times |
+        Divide |
+        Modulo |
+        Lss |
+        Leq |
+        Gtr |
+        Geq |
+        Eq |
+        Neq |
+        And |
+        Or;
+
+data Expr = 
+    Const Value |
+    Binop Operator Expr Expr |
+    Var Int |
+    LetIn Int Expr Expr |
+    If Expr Expr Expr |
+    Lambda Int Expr |
+    App Expr Expr |
+    LetRecIn Int Int Expr Expr;
+
+data Value =
+    IntVal Int |
+    BoolVal Bool |
+    ClosureVal Int Expr (List (Int, Value)) |
+    ClosureRecVal Int Int Expr (List (Int, Value));
+
+intOf (IntVal n) = n;
+boolOf (BoolVal q) = q;
+
+intBinop op a b env = 
+    IntVal (op (intOf (eval a env)) (intOf (eval b env)));
+
+boolBinop op a b env = 
+    BoolVal (op (intOf (eval a env)) (intOf (eval b env)));
+
+logicalBinop op a b env = 
+    BoolVal (op (boolOf (eval a env)) (boolOf (eval b env)));
+
+not True = False;
+not False = True;
+
+and True True = True;
+and _ _ = False;
+
+or False False = False;
+or _ _ = True;
+
+lookupEnv x [] = None; 
+lookupEnv x (y, v)::tl = if y == x then Some v else lookupEnv x tl;
+
+unwrap (Some x) = x;
+
+closureOf (ClosureRecVal f x body env) = 
+    let recVal = ClosureRecVal f x body env in
+    ClosureVal x body ((f, recVal)::env);
+closureOf v = v;
+
+eval (Const v) _ = v;
+eval (Binop Plus a b) env = intBinop (\n m -> n + m) a b env;
+eval (Binop Minus a b) env = intBinop (\n m -> n - m) a b env;
+eval (Binop Times a b) env = intBinop (\n m -> n * m) a b env;
+eval (Binop Divide a b) env = intBinop (\n m -> n / m) a b env;
+eval (Binop Modulo a b) env = intBinop (\n m -> n % m) a b env;
+eval (Binop Lss a b) env = boolBinop (\n m -> n < m) a b env;
+eval (Binop Leq a b) env = boolBinop (\n m -> n <= m) a b env;
+eval (Binop Gtr a b) env = boolBinop (\n m -> n > m) a b env;
+eval (Binop Geq a b) env = boolBinop (\n m -> n >= m) a b env;
+eval (Binop Eq a b) env = boolBinop (\n m -> n == m) a b env;
+eval (Binop Neq a b) env = boolBinop (\n m -> not (n == m)) a b env;
+eval (Binop And a b) env = logicalBinop and a b env;
+eval (Binop Or a b) env = logicalBinop or a b env;
+eval (Var x) env = unwrap (lookupEnv x env); 
+eval (LetIn x val e) env = eval e ((x, eval val env)::env);
+eval (If cond t e) env = 
+    if (boolOf (eval cond env))
+        then (eval t env)
+        else (eval e env);
+eval (Lambda x body) env = ClosureVal x body env;
+eval (App lhs rhs) env1 = 
+    let v = eval rhs env1 in
+    let (ClosureVal x body env2) = closureOf (eval lhs env1) in
+    eval body ((x, v)::env2);
+eval (LetRecIn f x body e) env = 
+    let recVal = ClosureRecVal f x body env in
+    eval e ((f, recVal)::env);
+
+fact n = intOf (eval (LetRecIn 1 0 (
+        If (Binop Eq (Var 0) (Const (IntVal 0)))
+            (Const (IntVal 1))
+            (Binop Times (Var 0) (App (Var 1) (Binop Minus (Var 0) (Const (IntVal 1)))))
+    ) (App (Var 1) (Const (IntVal n)))) []);
+
+isPrime n = boolOf (eval (LetRecIn 9 0 (
+    Lambda 1 (
+        If (Binop Leq (Binop Times (Var 1) (Var 1)) (Var 0))
+            (If (Binop Eq (Binop Modulo (Var 0) (Var 1)) (Const (IntVal 0)))
+                (Const (BoolVal False))
+                (App (App (Var 9) (Var 0)) (Binop Plus (Var 1) (Const (IntVal 1))))
+            )
+            (Binop Neq (Var 0) (Const (IntVal 1)))
+    )
+) (App (App (Var 9) (Const (IntVal n))) (Const (IntVal 2)))) []);
+
+listPrimes n = listPrimes' n [];
+
+listPrimes' 0 acc = acc;
+listPrimes' n acc = listPrimes' (n - 1) (if isPrime n then (n::acc) else acc);
+
+main = listPrimes 100;

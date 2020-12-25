@@ -132,11 +132,19 @@ const tyVarNames = typeVarNamer();
 
 const typeVar: Parser<TyVar> = map(token('variable'), ({ name }) => tyVarNames(name));
 
+const unitTy = map(seq(token('lparen'), token('rparen')), () => tyConst('unit'));
+
+const tupleTy = alt(map(
+    seq(token('lparen'), () => type, token('comma'), commas(() => type), token('rparen')),
+    ([_l, h, _c, vals, _r]) => tyConst('tuple', h, ...vals)
+), unitTy);
+
 const typeConst: Parser<TyConst> = map(
     seq(token('identifier'),
-        some(() => alt(
+        some(() => alt<MonoTy>(
             map(token('identifier'), ({ name }) => tyConst(name)),
             typeVar,
+            tupleTy,
             parens(() => type)
         ))
     ),
