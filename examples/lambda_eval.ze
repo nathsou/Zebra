@@ -2,24 +2,17 @@
 data Bool = True | False;
 data List a = Nil | Cons a (List a);
 data Maybe a = None | Some a;
-data Operator =
-        Plus |
-        Minus |
-        Times |
-        Divide |
-        Modulo |
-        Lss |
-        Leq |
-        Gtr |
-        Geq |
-        Eq |
-        Neq |
-        And |
-        Or;
+
+data BinaryOperator = 
+    Plus | Minus | Times | Divide | Modulo | Lss |
+    Leq | Gtr | Geq | Eq | Neq | And | Or;
+
+data UnaryOperator = Neg | Not;
 
 data Expr = 
     Const Value |
-    Binop Operator Expr Expr |
+    BinOp BinaryOperator Expr Expr |
+    MonOp UnaryOperator Expr |
     Var Int |
     LetIn Int Expr Expr |
     If Expr Expr Expr |
@@ -36,13 +29,13 @@ data Value =
 intOf (IntVal n) = n;
 boolOf (BoolVal q) = q;
 
-intBinop op a b env = 
+intBinOp op a b env = 
     IntVal (op (intOf (eval a env)) (intOf (eval b env)));
 
-boolBinop op a b env = 
+boolBinOp op a b env = 
     BoolVal (op (intOf (eval a env)) (intOf (eval b env)));
 
-logicalBinop op a b env = 
+logicalBinOp op a b env = 
     BoolVal (op (boolOf (eval a env)) (boolOf (eval b env)));
 
 not True = False;
@@ -65,19 +58,21 @@ closureOf (ClosureRecVal f x body env) =
 closureOf v = v;
 
 eval (Const v) _ = v;
-eval (Binop Plus a b) env = intBinop (\n m -> n + m) a b env;
-eval (Binop Minus a b) env = intBinop (\n m -> n - m) a b env;
-eval (Binop Times a b) env = intBinop (\n m -> n * m) a b env;
-eval (Binop Divide a b) env = intBinop (\n m -> n / m) a b env;
-eval (Binop Modulo a b) env = intBinop (\n m -> n % m) a b env;
-eval (Binop Lss a b) env = boolBinop (\n m -> n < m) a b env;
-eval (Binop Leq a b) env = boolBinop (\n m -> n <= m) a b env;
-eval (Binop Gtr a b) env = boolBinop (\n m -> n > m) a b env;
-eval (Binop Geq a b) env = boolBinop (\n m -> n >= m) a b env;
-eval (Binop Eq a b) env = boolBinop (\n m -> n == m) a b env;
-eval (Binop Neq a b) env = boolBinop (\n m -> not (n == m)) a b env;
-eval (Binop And a b) env = logicalBinop and a b env;
-eval (Binop Or a b) env = logicalBinop or a b env;
+eval (MonOp Neg n) env = IntVal (0 - (intOf (eval n env)));
+eval (MonOp Not q) env = BoolVal (not (boolOf (eval q env)));
+eval (BinOp Plus a b) env = intBinOp (\n m -> n + m) a b env;
+eval (BinOp Minus a b) env = intBinOp (\n m -> n - m) a b env;
+eval (BinOp Times a b) env = intBinOp (\n m -> n * m) a b env;
+eval (BinOp Divide a b) env = intBinOp (\n m -> n / m) a b env;
+eval (BinOp Modulo a b) env = intBinOp (\n m -> n % m) a b env;
+eval (BinOp Lss a b) env = boolBinOp (\n m -> n < m) a b env;
+eval (BinOp Leq a b) env = boolBinOp (\n m -> n <= m) a b env;
+eval (BinOp Gtr a b) env = boolBinOp (\n m -> n > m) a b env;
+eval (BinOp Geq a b) env = boolBinOp (\n m -> n >= m) a b env;
+eval (BinOp Eq a b) env = boolBinOp (\n m -> n == m) a b env;
+eval (BinOp Neq a b) env = boolBinOp (\n m -> not (n == m)) a b env;
+eval (BinOp And a b) env = logicalBinOp and a b env;
+eval (BinOp Or a b) env = logicalBinOp or a b env;
 eval (Var x) env = unwrap (lookupEnv x env); 
 eval (LetIn x val e) env = eval e ((x, eval val env)::env);
 eval (If cond t e) env = 
@@ -94,19 +89,19 @@ eval (LetRecIn f x body e) env =
     eval e ((f, recVal)::env);
 
 fact n = intOf (eval (LetRecIn 1 0 (
-        If (Binop Eq (Var 0) (Const (IntVal 0)))
+        If (BinOp Eq (Var 0) (Const (IntVal 0)))
             (Const (IntVal 1))
-            (Binop Times (Var 0) (App (Var 1) (Binop Minus (Var 0) (Const (IntVal 1)))))
+            (BinOp Times (Var 0) (App (Var 1) (BinOp Minus (Var 0) (Const (IntVal 1)))))
     ) (App (Var 1) (Const (IntVal n)))) []);
 
 isPrime n = boolOf (eval (LetRecIn 9 0 (
     Lambda 1 (
-        If (Binop Leq (Binop Times (Var 1) (Var 1)) (Var 0))
-            (If (Binop Eq (Binop Modulo (Var 0) (Var 1)) (Const (IntVal 0)))
+        If (BinOp Leq (BinOp Times (Var 1) (Var 1)) (Var 0))
+            (If (BinOp Eq (BinOp Modulo (Var 0) (Var 1)) (Const (IntVal 0)))
                 (Const (BoolVal False))
-                (App (App (Var 9) (Var 0)) (Binop Plus (Var 1) (Const (IntVal 1))))
+                (App (App (Var 9) (Var 0)) (BinOp Plus (Var 1) (Const (IntVal 1))))
             )
-            (Binop Neq (Var 0) (Const (IntVal 1)))
+            (BinOp Neq (Var 0) (Const (IntVal 1)))
     )
 ) (App (App (Var 9) (Const (IntVal n))) (Const (IntVal 2)))) []);
 

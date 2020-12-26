@@ -1,2 +1,7 @@
 
-main = let (a, b) = (3, 7) in a + b;
+data Bool = True | False;
+
+not True = False;
+not False = True;
+
+main = if (not True) then 1 else 2;

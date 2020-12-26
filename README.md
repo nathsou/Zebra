@@ -4,11 +4,12 @@
 
 ### Todo
 
+- [ ] Fix parsing performance issues
 - [x] polymorphic sum types
 - [x] pattern matching
 - [x] tuples
 - [ ] automatic semicolons
-- [ ] JS compiler
+- [x] JS compiler
 - [ ] records
 - [ ] modules
 - [ ] type classes
