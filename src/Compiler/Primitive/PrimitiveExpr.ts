@@ -42,12 +42,18 @@ export type PrimTyConstExpr = {
     args: PrimExpr[]
 };
 
-export type PrimConstantExpr = PrimIntegerExpr;
+export type PrimConstantExpr = PrimIntegerExpr | PrimCharExpr;
 
 export type PrimIntegerExpr = {
     type: 'constant',
     kind: 'integer',
     value: number
+};
+
+export type PrimCharExpr = {
+    type: 'constant',
+    kind: 'char',
+    value: string
 };
 
 export type PrimIfThenElseExpr = {

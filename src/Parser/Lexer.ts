@@ -1,4 +1,4 @@
-import { isNone, Maybe } from "../Utils/Mabye.ts";
+import { isNone, isSome, Maybe } from "../Utils/Mabye.ts";
 import { error, ok, Result } from "../Utils/Result.ts";
 import { Position, showPosition, Punctuation, Token, KeywordType, } from "./Token.ts";
 
@@ -72,6 +72,50 @@ export function* lex(input: string): Iterable<Result<Token, LexerError>> {
                 advance(keyword.length);
                 continue lexerLoop;
             }
+        }
+
+        // characters
+        if (cur === "'") {
+            let chr = '';
+
+            // skip the opening '
+            advance();
+
+            chr = current() ?? '';
+            advance();
+
+            if (current() !== "'") {
+                yield error(`missing closing "'"`);
+            }
+
+            // skip the closing '
+            advance();
+
+            yield ok({ type: 'char', value: chr, ...pos });
+            continue;
+        }
+
+        // strings
+        if (cur === '"') {
+            let str = '';
+
+            // skip the opening '
+            advance();
+
+            while (isSome(current()) && current() !== '"') {
+                str += current();
+                advance();
+            }
+
+            if (current() !== '"') {
+                yield error(`missing closing '"'`);
+            }
+
+            // skip the closing '
+            advance();
+
+            yield ok({ type: 'string', value: str, ...pos });
+            continue;
         }
 
         // variables

@@ -196,6 +196,9 @@ export const coreOf = (e: Expr): CoreExpr => {
                 rhs: coreOf(e.rhs)
             };
         }
+        case 'constant': {
+            return e;
+        }
     }
 
     return e;

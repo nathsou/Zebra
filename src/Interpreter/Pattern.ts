@@ -1,4 +1,4 @@
-import { intTy, tupleTy, uncurryFun } from "../Inferencer/FixedTypes.ts";
+import { intTy, charTy, tupleTy, uncurryFun } from "../Inferencer/FixedTypes.ts";
 import { freshInstance, freshTyVar, MonoTy, polyTy, PolyTy, showMonoTy, TypeEnv } from "../Inferencer/Types.ts";
 import { substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "../Inferencer/Unification.ts";
 import { envGet, envHas } from "../Utils/Env.ts";
@@ -57,6 +57,11 @@ const unifyPatternMany = (eqs: Array<[Pattern, Value]>): Maybe<ValSubst> => {
                     return None;
                 }
                 continue;
+            case 'char':
+                if (p.name !== `'${v.value}'`) {
+                    return None;
+                }
+                continue;
             case 'tyconst': // Decompose
                 if (
                     p.name === v.name &&
@@ -112,6 +117,11 @@ export const collectPatternSubst = (
     // integers
     if (/[0-9]+/.test(p.name)) {
         return checkedUnify(tau, intTy, p);
+    }
+
+    // characters
+    if (p.name[0] === "'") {
+        return checkedUnify(tau, charTy, p);
     }
 
     const constructorTy = p.name === 'tuple' ?

@@ -63,6 +63,8 @@ const naiveJsExprOf = (e: PrimExpr): string => {
             switch (e.kind) {
                 case 'integer':
                     return `${e.value}`;
+                case 'char':
+                    return `'${e.value}'`;
             }
         case 'switch':
             return `(arg => { \n ${naiveJsOfDecisionTree(e.dt)} \n })(${naiveJsExprOf(e.value)})`;
@@ -80,7 +82,15 @@ const occurenceOf = (occ: IndexedOccurence): string => {
 };
 
 const isNat = (n: string) => /[0-9]+/.test(n);
+const isChar = (c: string) => c[0] === "'";
 const isBool = (s: string) => s === 'True' || s === 'False';
+
+const nativeRepr = (ctor: string) => {
+    if (isNat(ctor)) return ctor;
+    if (isBool(ctor)) return ctor === 'True';
+    if (isChar(ctor)) return ctor;
+    return `"${ctor}"`;
+};
 
 const naiveJsOfDecisionTree = (dt: DecisionTree): string => {
     switch (dt.type) {
@@ -89,13 +99,12 @@ const naiveJsOfDecisionTree = (dt: DecisionTree): string => {
         case 'leaf':
             return `return ${naiveJsExprOf(dt.action)};`;
         case 'switch':
-            // console.log(dt.occurence, occurenceOf(dt.occurence));
-            const isNative = dt.tests.some(([ctor, _]) => isBool(ctor) || isNat(ctor));
+            const isNative = dt.tests.some(([ctor, _]) => isBool(ctor) || isNat(ctor) ||isChar(ctor));
 
             return `
                 switch (${occurenceOf(dt.occurence)}${isNative ? '' : '.name'}) {
                     ${dt.tests.map(([ctor, subtree]) =>
-                `${ctor === '_' ? 'default' : `case ${isNat(ctor) ? ctor : isBool(ctor) ? ctor === 'True' : `"${ctor}"`}`}:
+                `${ctor === '_' ? 'default' : `case ${nativeRepr(ctor)}`}:
                     ${naiveJsOfDecisionTree(subtree)}`
             ).join('\n')}
                 }`;

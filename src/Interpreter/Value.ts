@@ -1,16 +1,18 @@
 import { CoreExpr } from "../Core/CoreExpr.ts";
-import { Expr, showExpr } from "../Parser/Expr.ts";
+import { showExpr } from "../Parser/Expr.ts";
 import { showList } from "../Parser/Sugar.ts";
 import { Env } from "../Utils/Env.ts";
-import { Pattern, showPattern } from "./Pattern.ts";
+import { showPattern } from "./Pattern.ts";
 
 export type ValEnv = Env<Value>;
 
 export type Value = ConstantVal | ClosureVal | TyConstVal | RecVarVal;
 
-export type ConstantVal = IntegerVal;
+export type ConstantVal = IntegerVal | CharVal;
 
 export type IntegerVal = { type: 'int', value: number };
+
+export type CharVal = { type: 'char', value: string };
 
 // Type constructor, constructor
 export const ty = (name: string, ...args: Value[]): TyConstVal => {
@@ -40,6 +42,8 @@ export const valuesEq = (a: Value, b: Value): boolean => {
     switch (a.type) {
         case 'int':
             return a.value === (b as IntegerVal).value;
+        case 'char':
+            return a.value === (b as CharVal).value;
         case 'closure':
             return false;
         case 'recvar':
@@ -53,6 +57,7 @@ export const valuesEq = (a: Value, b: Value): boolean => {
 
 export type ValueTypeMap = {
     'int': IntegerVal,
+    'char': CharVal,
     'closure': ClosureVal,
     'tyconst': TyConstVal,
     'recvar': RecVarVal
@@ -62,6 +67,8 @@ export const showValue = (val: Value): string => {
     switch (val.type) {
         case 'int':
             return val.value.toString();
+        case 'char':
+            return `'${val.value}'`;
         case 'closure':
             return `λ${showPattern(val.arg)} -> ${showExpr(val.body)}`;
         case 'tyconst':

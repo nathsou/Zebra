@@ -14,12 +14,18 @@ export type TyConstExpr = {
     args: Expr[]
 };
 
-export type ConstantExpr = IntegerExpr;
+export type ConstantExpr = IntegerExpr | CharExpr;
 
 export type IntegerExpr = {
     type: 'constant',
     kind: 'integer',
     value: number
+};
+
+export type CharExpr = {
+    type: 'constant',
+    kind: 'char',
+    value: string
 };
 
 export type LambdaExpr = {
@@ -85,6 +91,8 @@ export const showExpr = (expr: Expr): string => {
             switch (expr.kind) {
                 case 'integer':
                     return `${expr.value}`;
+                case 'char':
+                    return `'${expr.value}'`;
             }
         case 'binop':
             return `(${showExpr(expr.left)} ${expr.operator} ${showExpr(expr.right)})`;

@@ -123,6 +123,8 @@ const evalExpr = (expr: CoreExpr, env: ValEnv): EvalResult => {
             switch (expr.kind) {
                 case 'integer':
                     return ok({ type: 'int', value: expr.value });
+                case 'char':
+                    return ok({ type: 'char', value: expr.value });
             }
         case 'let_in':
             return bind(evalExpr(expr.middle, env), val => {

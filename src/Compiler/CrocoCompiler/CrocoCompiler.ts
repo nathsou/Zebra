@@ -1,4 +1,4 @@
-import { isVar, Pattern } from "../../Interpreter/Pattern.ts";
+import { isFun, isVar, Pattern, showPattern } from "../../Interpreter/Pattern.ts";
 import { Decl } from "../../Parser/Decl.ts";
 import { Expr } from "../../Parser/Expr.ts";
 
@@ -45,6 +45,12 @@ export const crocoDeclOf = (decl: Decl, topLevelFuncs: string[], funcNames: Set<
 
 export const crocoPatternOf = (pattern: Pattern): string => {
     if (isVar(pattern)) return pattern;
+    if (pattern.name === 'Nil') return '[]';
+    if (pattern.name === 'Cons') {
+        const [h, tl] = pattern.args;
+        return `(${crocoPatternOf(h)}:${crocoPatternOf(tl)})`;
+    }
+    if (pattern.name[0] === "'") return pattern.name.charCodeAt(1).toString();
     if (pattern.args.length === 0) return camel(pattern.name);
     return `(${camel(pattern.name)} ${pattern.args.map(crocoPatternOf).join(' ')})`;
 };
@@ -82,6 +88,8 @@ export const crocoExprOf = (expr: Expr, topLevelFuncs: string[], funcNames: Set<
             switch (expr.kind) {
                 case 'integer':
                     return `${expr.value}`;
+                case 'char':
+                    return `${expr.value.charCodeAt(0)}`;
             }
         case 'case_of': {
             const name = `CaseOf${topLevelFuncs.length}`;

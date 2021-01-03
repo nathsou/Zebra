@@ -4,12 +4,15 @@ export type Token =
     | Identifier
     | Variable
     | Integer
+    | Char
+    | String
     | Keyword
     | Comment
     | EOF;
 
 export type TokenType =
-    Punctuation['type'] | 'symbol' | 'keyword' | 'variable' | 'identifier' | 'integer' | 'comment' | 'EOF';
+    Punctuation['type'] | 'symbol' | 'keyword' | 'variable' |
+    'identifier' | 'integer' | 'char' | 'string' | 'comment' | 'EOF';
 
 export type Punctuation =
     | Tok<'lparen'>
@@ -29,7 +32,8 @@ export type Position = {
     column: number;
 };
 
-export type Tok<Name extends TokenType, T = Record<string, unknown>> = Position & { type: Name } & T;
+export type Tok<Name extends TokenType, T =
+    Record<string, unknown>> = Position & { type: Name } & T;
 
 type Symbol = Tok<'symbol', {
     name: string
@@ -47,11 +51,21 @@ type Integer = Tok<'integer', {
     value: number
 }>;
 
+type Char = Tok<'char', {
+    value: string
+}>;
+
+type String = Tok<'string', {
+    value: string
+}>;
+
 type Comment = Tok<'comment', {
     value: string
 }>;
 
-export type KeywordType = 'let' | 'rec' | 'in' | 'if' | 'then' | 'else' | 'data' | 'case' | 'of';
+export type KeywordType =
+    'let' | 'rec' | 'in' | 'if' | 'then' |
+    'else' | 'data' | 'case' | 'of';
 
 type Keyword = Tok<'keyword', {
     value: KeywordType
@@ -88,6 +102,10 @@ export const showToken = (t: Token): string => {
             return t.name;
         case 'integer':
             return t.value.toString();
+        case 'char':
+            return `'${t.value}'`;
+        case 'string':
+            return `"${t.value}"`;
         default:
             return tokenSymbs[t.type];
     }

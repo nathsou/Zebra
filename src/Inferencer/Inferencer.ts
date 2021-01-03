@@ -1,4 +1,4 @@
-import { assert } from "https://deno.land/std@0.73.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
 import { CoreDecl, CoreFuncDecl } from "../Core/CoreDecl.ts";
 import { CoreExpr } from "../Core/CoreExpr.ts";
 import { collectPatternSubst } from "../Interpreter/Pattern.ts";

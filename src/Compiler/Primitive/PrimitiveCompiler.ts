@@ -76,11 +76,7 @@ export const primitiveOf = (e: CoreExpr): PrimExpr => {
             };
         }
         case 'constant':
-            return {
-                type: 'constant',
-                kind: e.kind,
-                value: e.value
-            };
+            return e;
         case 'if_then_else':
             return {
                 type: 'if_then_else',

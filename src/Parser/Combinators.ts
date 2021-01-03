@@ -1,7 +1,6 @@
 import { isSome, Maybe, None } from "../Utils/Mabye.ts";
 import { bind, error, isError, isOk, mapResult, ok, Result } from "../Utils/Result.ts";
 import { lex, LexerError } from "./Lexer.ts";
-import { cons } from "./Sugar.ts";
 import { KeywordType, showPosition, showToken, Tok, Token, TokenType } from "./Token.ts";
 
 /**

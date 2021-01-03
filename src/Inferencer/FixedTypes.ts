@@ -7,6 +7,7 @@ import { freshTyVar, isTyConst, MonoTy, PolyTy, polyTy, tyConst, tyVar } from ".
 
 export const intTy = tyConst('Int');
 export const boolTy = tyConst('Bool');
+export const charTy = tyConst('Char');
 export const unitTy = tyConst('()');
 
 // at least one argument
@@ -56,6 +57,8 @@ export const constantTy = (c: ConstantExpr): PolyTy => {
     switch (c.kind) {
         case 'integer':
             return polyTy(intTy);
+        case 'char':
+            return polyTy(charTy);
     }
 };
 

@@ -1,9 +1,10 @@
 import { MonoTy, TyConst, tyConst, typeVarNamer, TyVar } from "../Inferencer/Types.ts";
 import { Pattern } from "../Interpreter/Pattern.ts";
+import { valuesEq } from "../Interpreter/Value.ts";
 import { error } from "../Utils/Result.ts";
 import { alt, brackets, commas, keyword, leftassoc, many, map, oneOf, optional, parens, Parser, ParserRef, sepBy, seq, some, symbol, token } from "./Combinators.ts";
 import { Decl } from "./Decl.ts";
-import { CaseOfExpr, CaseOfExprCase, ConstantExpr, Expr, IntegerExpr, TyConstExpr, VarExpr } from "./Expr.ts";
+import { CaseOfExpr, CaseOfExprCase, CharExpr, ConstantExpr, Expr, IntegerExpr, TyConstExpr, VarExpr } from "./Expr.ts";
 import { lambdaOf, listOf } from "./Sugar.ts";
 
 // https://www.haskell.org/onlinereport/syntax-iso.html
@@ -19,7 +20,14 @@ const integer: Parser<IntegerExpr> = map(token('integer'), ({ value }) => ({
     type: 'constant', kind: 'integer', value
 }));
 
-const constant: Parser<ConstantExpr> = oneOf(integer);
+const charOf = (c: string): CharExpr => ({ type: 'constant', kind: 'char', value: c });
+
+const char: Parser<CharExpr> = map(token('char'), ({ value: c }) => charOf(c));
+
+const constant: Parser<ConstantExpr> = oneOf(integer, char);
+
+const string: Parser<Expr> = map(token('string'), ({ value }) => 
+    listOf(value.split('').map(charOf)));
 
 const variable: Parser<VarExpr> = map(token('variable'), ({ name }) => ({ type: 'variable', name }));
 const identifier: Parser<VarExpr> = map(token('identifier'), ({ name }) => ({ type: 'variable', name }));
@@ -41,7 +49,7 @@ const nil: Parser<Expr> = map(
 
 const list = alt(map(brackets(commas(expr)), listOf), nil);
 
-const atomic: Parser<Expr> = oneOf(parens(expr), constant, variable, identifier, tuple, list);
+const atomic: Parser<Expr> = oneOf(parens(expr), constant, variable, identifier, tuple, list, string);
 
 const factor: Parser<Expr> = leftassoc(
     atomic,
@@ -193,10 +201,17 @@ const varPattern: Parser<Pattern> = alt(map(token('variable'), ({ name }) => {
     }
 }), parensPat);
 
+const charPatOf = (c: string): Pattern => ({
+    name: `'${c}'`,
+    args: []
+});
+
 const constantPat: Parser<Pattern> = alt(map(constant, c => {
     switch (c.kind) {
         case 'integer':
-            return { name: `${c.value}`, args: [] }
+            return { name: `${c.value}`, args: [] };
+        case 'char':
+            return charPatOf(c.value);
     }
 }), varPattern);
 
@@ -224,6 +239,12 @@ const listPat = alt(map(
         .reduce((acc, c) => ({ name: 'Cons', args: [c, acc] }), ({ name: 'Nil', args: [] }))
 ), nilPat);
 
+const stringPat = alt(map(
+    token('string'),
+    ({ value }) => value.split('').map(charPatOf).reverse()
+        .reduce((acc, c) => ({ name: 'Cons', args: [c, acc] }), ({ name: 'Nil', args: [] }))
+), listPat);
+
 let consPat: ParserRef<Pattern> = dummyBeforeInit();
 
 consPat.ref = alt(map(
@@ -232,6 +253,6 @@ consPat.ref = alt(map(
         name: 'Cons',
         args: [left, right]
     })
-), listPat);
+), stringPat);
 
 pattern.ref = consPat.ref;
