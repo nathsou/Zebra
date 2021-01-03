@@ -8,7 +8,7 @@ import { bind, ok, Result } from "../Utils/Result.ts";
 export const compileCroco = (source: string): Result<[ty: MonoTy, croco: string], string> => {
     return bind(parse(source, program), prog => {
         return bind(typeCheck(prog), ({ ty }) => {
-            let croco = crocoProgramOf(prog);
+            const croco = crocoProgramOf(prog);
             return ok([ty, croco]);
         });
     });

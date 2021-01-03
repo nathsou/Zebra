@@ -8,7 +8,7 @@ const camel = (f: string): string => {
 
 const rename = (f: string): string => {
     if (f === 'main') return 'Main';
-    return `Ze${f[0].toUpperCase()}${f.slice(1)}`;
+    return `Ze${camel(f)}`;
 };
 
 export const crocoProgramOf = (prog: Decl[]): string => {

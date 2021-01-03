@@ -1,6 +1,7 @@
 import { isSome, Maybe, None } from "../Utils/Mabye.ts";
 import { bind, error, isError, isOk, mapResult, ok, Result } from "../Utils/Result.ts";
 import { lex, LexerError } from "./Lexer.ts";
+import { cons } from "./Sugar.ts";
 import { KeywordType, showPosition, showToken, Tok, Token, TokenType } from "./Token.ts";
 
 /**
@@ -18,15 +19,9 @@ export type ParserResult<T> = Result<T, ParserError>;
  * @param T the type returned when parsing is successfull
  */
 export type Parser<T> = (state: ParserState) => ParserResult<T>;
+export type ParserRef<T> = { ref: Parser<T> };
 
-type LazyParser<T> = () => Parser<T>;
-type AnyParser<T> = Parser<T> | LazyParser<T>;
-
-function isLazy<T>(p: AnyParser<T>): p is LazyParser<T> {
-    // parsers receive one argument (the state)
-    // lazy parsers receive no arguments
-    return p.length === 0;
-}
+type AnyParser<T> = Parser<T> | ParserRef<T>;
 
 /**
  * the state used by parsers
@@ -45,6 +40,11 @@ export const advance = (state: ParserState): void => {
 
 export const current = ({ tokens, pos }: ParserState): Maybe<Token> => {
     return tokens[pos];
+};
+
+const parserOf = <T>(p: AnyParser<T>): Parser<T> => {
+    if (typeof p === 'object') return p.ref;
+    return p;
 };
 
 // could variatic tuple types help here?
@@ -69,8 +69,6 @@ export function seq(...parsers: AnyParser<any>[]): Parser<any[]> {
         return ok(vals);
     };
 }
-
-const parserOf = <T>(p: AnyParser<T>): Parser<T> => isLazy(p) ? p() : p;
 
 // right lazy alternative
 export const alt = <T>(...ps: AnyParser<T>[]): Parser<T> => state => {
@@ -268,6 +266,25 @@ export const rightassoc = <A, B, T>(
         seq(some(l), r),
         ([tl, h]) => tl.length === 0 ? h : tl.reduce(f, h as T | B)
     );
+};
+
+export const cache = <T>(p: AnyParser<T>): Parser<T> => {
+    let cachedRes: ParserResult<T> | null = null;
+
+    return (state: ParserState) => {
+        if (cachedRes === null) {
+            cachedRes = parserOf(p)(state);
+        }
+
+        return cachedRes;
+    };
+};
+
+export const using = <T, U>(
+    f: (x: U) => Parser<T>,
+    x: () => U
+): Parser<T> => {
+    return f(x());
 };
 
 export const optional = <T>(p: AnyParser<T>): Parser<Maybe<T>> => state => {

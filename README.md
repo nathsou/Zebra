@@ -4,7 +4,6 @@
 
 ### Todo
 
-- [ ] Fix parsing performance issues
 - [x] polymorphic sum types
 - [x] pattern matching
 - [x] tuples

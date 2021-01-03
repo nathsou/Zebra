@@ -1,6 +1,7 @@
 import { MonoTy, TyConst, tyConst, typeVarNamer, TyVar } from "../Inferencer/Types.ts";
 import { Pattern } from "../Interpreter/Pattern.ts";
-import { alt, brackets, commas, keyword, leftassoc, many, map, oneOf, optional, parens, Parser, sepBy, seq, some, symbol, token } from "./Combinators.ts";
+import { error } from "../Utils/Result.ts";
+import { alt, brackets, commas, keyword, leftassoc, many, map, oneOf, optional, parens, Parser, ParserRef, sepBy, seq, some, symbol, token } from "./Combinators.ts";
 import { Decl } from "./Decl.ts";
 import { CaseOfExpr, CaseOfExprCase, ConstantExpr, Expr, IntegerExpr, TyConstExpr, VarExpr } from "./Expr.ts";
 import { lambdaOf, listOf } from "./Sugar.ts";
@@ -9,9 +10,10 @@ import { lambdaOf, listOf } from "./Sugar.ts";
 
 // expressions
 
-// allows us to use expr before initialization
-const exp = () => expr;
-const pat = () => pattern;
+const dummyBeforeInit: () => ParserRef<any> = () => ({ ref: () => error('dummy') });
+
+export let expr: ParserRef<Expr> = dummyBeforeInit();
+let pattern: ParserRef<Pattern> = dummyBeforeInit();
 
 const integer: Parser<IntegerExpr> = map(token('integer'), ({ value }) => ({
     type: 'constant', kind: 'integer', value
@@ -28,7 +30,7 @@ const unit: Parser<TyConstExpr> = map(
 );
 
 const tuple: Parser<TyConstExpr> = alt(map(
-    seq(token('lparen'), exp, token('comma'), commas(exp), token('rparen')),
+    seq(token('lparen'), expr, token('comma'), commas(expr), token('rparen')),
     ([_l, h, _c, vals, _r]) => ({ type: 'tyconst', name: 'tuple', args: [h, ...vals] })
 ), unit);
 
@@ -37,9 +39,9 @@ const nil: Parser<Expr> = map(
     () => ({ type: 'tyconst', name: 'Nil', args: [] })
 );
 
-const list = alt(map(brackets(commas(exp)), listOf), nil);
+const list = alt(map(brackets(commas(expr)), listOf), nil);
 
-const atomic: Parser<Expr> = oneOf(constant, variable, identifier, tuple, list, parens(exp));
+const atomic: Parser<Expr> = oneOf(parens(expr), constant, variable, identifier, tuple, list);
 
 const factor: Parser<Expr> = leftassoc(
     atomic,
@@ -53,14 +55,16 @@ const term: Parser<Expr> = leftassoc(
     (left, [op, right]) => ({ type: 'binop', operator: op.name, left, right })
 );
 
-const app: Parser<Expr> = alt(leftassoc(
+const app: Parser<Expr> = leftassoc(
     term,
     term,
     (lhs, rhs) => ({ type: 'app', lhs, rhs })
-), term);
+);
 
-const cons: Parser<Expr> = alt(map(
-    seq(app, token('cons'), () => cons),
+let cons: ParserRef<Expr> = dummyBeforeInit();
+
+cons.ref = alt(map(
+    seq(app, token('cons'), cons),
     ([left, _, right]) => ({
         type: 'app',
         lhs: {
@@ -79,27 +83,27 @@ const comparison: Parser<Expr> = leftassoc(
 );
 
 const ifThenElse: Parser<Expr> = alt(map(
-    seq(keyword('if'), exp, keyword('then'), exp, keyword('else'), exp),
+    seq(keyword('if'), expr, keyword('then'), expr, keyword('else'), expr),
     ([_if, cond, _then, thenBranch, _else, elseBranch]) => ({ type: 'if_then_else', cond, thenBranch, elseBranch })
 ), comparison);
 
 const case_: Parser<CaseOfExprCase> = map(
-    seq(pat, token('rightarrow'), exp),
+    seq(pattern, token('rightarrow'), expr),
     ([p, _, e]) => ({ pattern: p, expr: e })
 );
 
 const caseOf: Parser<CaseOfExpr> = map(
-    seq(keyword('case'), exp, keyword('of'), optional(token('pipe')), sepBy(case_, 'pipe')),
+    seq(keyword('case'), expr, keyword('of'), optional(token('pipe')), sepBy(case_, 'pipe')),
     ([_case, value, _of, _, cases]) => ({ type: 'case_of', arity: 1, value, cases })
 );
 
 const letIn: Parser<Expr> = alt(map(
-    seq(keyword('let'), pat, symbol('='), exp, keyword('in'), exp),
+    seq(keyword('let'), pattern, symbol('='), expr, keyword('in'), expr),
     ([_let, left, _eq, middle, _in, right]) => ({ type: 'let_in', left, middle, right })
 ), alt(caseOf, ifThenElse));
 
 const letRecIn: Parser<Expr> = alt(map(
-    seq(keyword('let'), keyword('rec'), variable, many(pat), symbol('='), exp, keyword('in'), exp),
+    seq(keyword('let'), keyword('rec'), variable, many(pattern), symbol('='), expr, keyword('in'), expr),
     ([_let, _rec, f, args, _eq, middle, _in, right]) => ({
         type: 'let_rec_in',
         funName: f.name,
@@ -110,16 +114,16 @@ const letRecIn: Parser<Expr> = alt(map(
 ), letIn);
 
 const lambda = alt(map(
-    seq(token('lambda'), many(pat), token('rightarrow'), exp),
+    seq(token('lambda'), many(pattern), token('rightarrow'), expr),
     ([_lambda, args, _arrow, body]) => lambdaOf(args, body)
 ), letRecIn);
 
-export const expr: Parser<Expr> = lambda;
+expr.ref = lambda;
 
 // declarations
 
 const funDecl: Parser<Decl> = map(
-    seq(token('variable'), some(pat), symbol('='), expr, token('semicolon')),
+    seq(token('variable'), some(pattern), symbol('='), expr, token('semicolon')),
     ([f, args, _eq, body, _semi]) => ({
         type: 'fun',
         name: f.name,
@@ -134,24 +138,26 @@ const typeVar: Parser<TyVar> = map(token('variable'), ({ name }) => tyVarNames(n
 
 const unitTy = map(seq(token('lparen'), token('rparen')), () => tyConst('unit'));
 
+let type: ParserRef<MonoTy> = dummyBeforeInit();
+
 const tupleTy = alt(map(
-    seq(token('lparen'), () => type, token('comma'), commas(() => type), token('rparen')),
+    seq(token('lparen'), type, token('comma'), commas(type), token('rparen')),
     ([_l, h, _c, vals, _r]) => tyConst('tuple', h, ...vals)
 ), unitTy);
 
 const typeConst: Parser<TyConst> = map(
     seq(token('identifier'),
-        some(() => alt<MonoTy>(
+        some(alt<MonoTy>(
             map(token('identifier'), ({ name }) => tyConst(name)),
             typeVar,
             tupleTy,
-            parens(() => type)
+            parens(type)
         ))
     ),
     ([f, args]) => tyConst(f.name, ...args)
 );
 
-const type: Parser<MonoTy> = oneOf(typeVar, typeConst);
+type.ref = oneOf(typeVar, typeConst);
 
 const dataTypeDecl: Parser<Decl> = alt(map(
     seq(
@@ -177,7 +183,7 @@ export const program: Parser<Decl[]> = some(decl);
 
 // patterns
 
-const parensPat = parens(pat);
+const parensPat = parens(pattern);
 
 const varPattern: Parser<Pattern> = alt(map(token('variable'), ({ name }) => {
     if (name === '_') {
@@ -200,30 +206,32 @@ const nullaryFunPattern: Parser<Pattern> = alt(map(
 ), constantPat);
 
 const funPattern: Parser<Pattern> = alt(map(
-    parens(seq(token('identifier'), some(() => pattern))),
+    parens(seq(token('identifier'), some(pattern))),
     ([f, args]) => ({ name: f.name, args })
 ), nullaryFunPattern);
 
 const unitPat = alt(map(seq(token('lparen'), token('rparen')), () => ({ name: 'unit', args: [] })), funPattern);
 
 const tuplePat = alt(map(
-    seq(token('lparen'), () => pattern, token('comma'), commas(() => pattern), token('rparen')),
+    seq(token('lparen'), pattern, token('comma'), commas(pattern), token('rparen')),
     ([_l, h, _c, vals, _r]) => ({ name: 'tuple', args: [h, ...vals] })
 ), unitPat);
 
 const nilPat = alt(map(seq(token('lbracket'), token('rbracket')), () => ({ name: 'Nil', args: [] })), tuplePat);
 const listPat = alt(map(
-    seq(token('lbracket'), () => commas(() => pattern), token('rbracket')),
+    seq(token('lbracket'), commas(pattern), token('rbracket')),
     ([_l, vals, _r]) => [...vals].reverse()
         .reduce((acc, c) => ({ name: 'Cons', args: [c, acc] }), ({ name: 'Nil', args: [] }))
 ), nilPat);
 
-const consPat: Parser<Pattern> = alt(map(
-    seq(listPat, token('cons'), () => consPat),
+let consPat: ParserRef<Pattern> = dummyBeforeInit();
+
+consPat.ref = alt(map(
+    seq(listPat, token('cons'), consPat),
     ([left, _, right]) => ({
         name: 'Cons',
         args: [left, right]
     })
 ), listPat);
 
-const pattern: Parser<Pattern> = consPat;
+pattern.ref = consPat.ref;
