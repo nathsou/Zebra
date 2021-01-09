@@ -1,8 +1,7 @@
 import { CoreDecl } from "../../Core/CoreDecl.ts";
 import { CoreExpr } from "../../Core/CoreExpr.ts";
-import { casifyFunctionDeclarations } from "../../Core/Simplifier.ts";
+import { casifyFunctionDeclarations } from "../../Core/Casify.ts";
 import { Decl } from "../../Parser/Decl.ts";
-import { lambdaOf } from "../../Parser/Sugar.ts";
 import { gen } from "../../Utils/Common.ts";
 import { showDecisionTree } from "../DecisionTrees/DecisionTree.ts";
 import { clauseMatrixOf, compileClauseMatrix } from "../DecisionTrees/DecisionTreeCompiler.ts";

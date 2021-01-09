@@ -15,8 +15,6 @@ const run = async (source: string, target: string): Promise<void> => {
             });
         }).value;
 
-        
-
         console.log(out);
     } else {
         const compile = target === 'js' ? compileNaive : compileCroco;

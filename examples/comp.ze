@@ -1,9 +1,17 @@
 data List a = Nil | Cons a (List a);
 
-say "Hello" = "Hi!";
-say "MyName" = "Nathan";
+-- say "Hello" = "Hi!";
+-- say "MyName" = "Nathan";
+-- say x = x;
 
-len [] = 0;
-len h::tl = (len tl) + 1;
+-- len [] = 0;
+-- len _::tl = (len tl) + 1;
 
-main = (len [1, 2, 3]) + (len (say "MyName"));
+-- main = say "MyName";
+
+take' 0 _ acc = acc;
+take' n h::tl acc = take' (n - 1) tl (h::acc);
+take n lst = take' n lst [];
+
+
+main = let _ = take 2 [1, 2, 3] in take;

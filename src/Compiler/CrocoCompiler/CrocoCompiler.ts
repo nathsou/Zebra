@@ -1,4 +1,4 @@
-import { isFun, isVar, Pattern, showPattern } from "../../Interpreter/Pattern.ts";
+import { isVar, Pattern } from "../../Interpreter/Pattern.ts";
 import { Decl } from "../../Parser/Decl.ts";
 import { Expr } from "../../Parser/Expr.ts";
 

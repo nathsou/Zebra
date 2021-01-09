@@ -5,6 +5,15 @@ export const emptyEnv = <T>(): Env<T> => ({});
 export const envHas = <T>(env: Env<T>, x: string) => env[x] !== undefined;
 export const envGet = <T>(env: Env<T>, x: string) => env[x];
 export const envAdd = <T>(env: Env<T>, x: string, val: T): Env<T> => ({ ...env, [x]: val });
+export const envAddMut = <T>(env: Env<T>, x: string, val: T): Env<T> => {
+    (env as any)[x] = val;
+    return env;
+};
+export const envRem = <T>(env: Env<T>, x: string): Env<T> => {
+    const cpy = { ...env };
+    delete cpy[x];
+    return cpy;
+};
 export const envSum = <T>(env1: Env<T>, env2: Env<T>): Env<T> => ({ ...env1, ...env2 });
 export const envMap = <T, U>(env: Env<T>, f: (v: T) => U): Env<U> => {
     const env2: Record<string, U> = {};

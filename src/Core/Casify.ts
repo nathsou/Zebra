@@ -8,7 +8,6 @@ import { CoreCaseOfExpr, CoreExpr, CoreTyConstExpr } from "./CoreExpr.ts";
 
 export const casifyFunctionDeclarations = (prog: Decl[]): CoreDecl[] => {
     const funs: FuncDecl[] = [];
-
     const core: CoreDecl[] = [];
 
     for (const decl of prog) {

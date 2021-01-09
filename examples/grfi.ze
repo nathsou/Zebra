@@ -1,0 +1,164 @@
+-- Girafe interpreter
+
+data Bool = True | False;
+data List a = Nil | Cons a (List a);
+data Maybe a = None | Some a;
+
+-- data Term =
+--     | Var (List Char)
+--     | Fun (List Char) (List Term);
+
+-- elem _ [] = False;
+-- elem x h::tl = if h == x then True else elem x tl;
+
+-- -- waiting for type classes...
+-- isUpper c = elem c "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+-- not True = False;
+-- not False = True;
+
+-- isLower c = not (isUpper c);
+
+-- map _ [] = [];
+-- map f h::tl = (f h)::(map f tl); 
+
+-- satisfy _ "" = None;
+-- satisfy test c::cs =
+--     if test c then
+--         Some ([c], cs)
+--     else None;
+
+-- isDigit c = elem c "0123456789";
+
+-- parseDigit str = satisfy isDigit str;
+-- parseUpper str = satisfy isUpper str;
+-- parseLower str = satisfy isLower str;
+-- parseChar c str = satisfy (\char -> char == c) str; 
+
+-- isLetter c = elem c "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+-- parseLetter str = satisfy isLetter str;
+
+-- alt fst snd str = 
+--     case fst str of
+--         | None -> snd str
+--         | res -> res;
+
+-- mapSome _ None = None;
+-- mapSome f (Some x) = Some (f x);
+
+-- many parser str = many' parser str ("", str);
+-- many' parser str (res, out) =
+--     case parser str of
+--         | None -> Some (reverse res, out)
+--         | (Some ([r], rem)) -> many' parser rem (r::res, rem);
+
+-- seq ps str = seq' ps str ("", str);
+-- seq' [] _ (res, out) = Some (reverse res, out);
+-- seq' p::ps str (res, out) = 
+--     case p str of
+--         | None -> None
+--         | (Some (r, rem)) -> seq' ps rem (r::res, rem);
+
+-- lazyOr True b = True;
+-- lazyOr False b = b ();
+
+-- isAlphaNum c = lazyOr (isLetter c) (\_ -> isDigit c);
+-- parseAlphaNum str = satisfy isAlphaNum str;
+
+-- prepend as bs = prepend' (reverse as) bs;
+-- prepend' [] bs = bs;
+-- prepend' (a::as) bs = prepend' as (a::bs);
+
+-- append as bs = prepend bs as;
+
+-- flatten lists = flatten' lists [];
+-- flatten' [] acc = acc;
+-- flatten' lst::lists acc = flatten' lists (append lst acc);
+
+-- mapParser p f str = mapSome (\(res, rem) -> (f res, rem)) (p str);
+
+-- parseTerm _ = alt parseVar parseFun;
+
+-- parseVar str =
+--     mapParser
+--         (seq [parseLower, many parseAlphaNum])
+--         (\lst -> Var (flatten lst)) str;
+
+-- parseNullaryFun str =
+--     mapParser
+--         (seq [parseUpper, many parseAlphaNum])
+--         (\lst -> Fun (flatten lst) []) str;
+
+-- commas p str = commas' p str [];
+-- commas' p str acc = 
+--     let r = case p str of 
+--         | None -> acc
+--         | (Some (res, rem)) -> 
+--             case parseChar ',' rem of
+--                 | None -> res::acc
+--                 | (Some (_, rem2)) -> commas' p rem2 (res::acc)
+--     in r;
+
+-- parseFun str =
+--     mapParser
+--         (seq [parseUpper, many parseAlphaNum, parseChar '('])
+--         (\lst -> Fun (flatten lst) []) str;
+
+-- 1. identify function dependencies (mutually-recursive, one-sided recursive...) using a dependency graph
+-- 2. reorder one-sided recursive functions and their dependencies
+-- 3. rewrite the mutally recursive functions (p. 57 http://caml.inria.fr/pub/docs/u3-ocaml/ocaml.pdf)
+-- 5. the whole program is now a single expression
+-- 4. type-check on this expression
+
+reverse lst = reverse' lst []; -- 'a : 'c -> 'd
+reverse' [] acc = acc; -- 'b
+reverse' (h::tl) acc = reverse' tl (h::acc);
+
+main = let _ = reverse [1, 2, 3] in reverse;
+
+-- transformer les declarations en expression mutuellement récursives
+-- pour le type checking
+
+-- odd 0 = False;
+-- odd n = even (n - 1);
+
+-- even 0 = True;
+-- even n = odd (n - 1);
+
+-- main = odd 17;
+
+-- main =
+--     let rec odd n = case n of 0 -> False | n -> even (n - 1);
+
+-- main = 
+--     let len = \lst -> let rec len' lst l =
+--         case lst of [] -> l | _::tl -> len' tl (l + 1)
+--         in len' lst
+--     in len;
+
+-- len lst = len' lst 0;
+-- len' [] l = l;
+-- len' _::tl l = len' tl (l + 1);
+
+-- not True = False;
+-- not False = True;
+
+-- main = let _ = (reverse [1, 2, 3], reverse "hey") in reverse;
+-- main = let _ = (reverse [1, 2, 3], reverse "hey") in reverse;
+
+-- main = let _ = len "Hey" in len;
+-- main = map (\n -> n * n) [1, 2, 3];
+
+-- len [] = 0;
+-- len _::tl = (len tl) + 1; 
+-- main = let _ = len [1, 2, 3] in len;
+
+-- main = let f = \x -> [x] in let _ = f 1 in f;
+
+-- f x = [x];
+-- main = let _ = f 1 in f;
+
+-- main = 
+--     let rec len lst = case lst of [] -> 0 | _::tl -> (len tl) + 1
+--     in let _ = len [1, 2, 3] in len;

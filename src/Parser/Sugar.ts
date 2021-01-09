@@ -11,7 +11,7 @@ export const lambdaOf = <T, K>(args: K[], body: T) =>
     lambdaAux([...args].reverse(), body);
 
 const lambdaAux = <T, K>(args: K[], body: T | LambdaExpr<T, K>): LambdaExpr<T | LambdaExpr<T, K>, K> => {
-    assert(args.length > 0);
+    assert(args.length > 0, 'lambdaOf called with a function with no arguments');
     if (args.length === 1) return { type: 'lambda', arg: args[0], body };
     const [h, tl] = [args[0], args.slice(1)];
     const subBody: LambdaExpr<T | LambdaExpr<T, K>, K> = { type: 'lambda', arg: h, body: body };

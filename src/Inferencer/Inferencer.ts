@@ -1,14 +1,14 @@
 import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
-import { CoreDecl, CoreFuncDecl } from "../Core/CoreDecl.ts";
+import { CoreDecl } from "../Core/CoreDecl.ts";
 import { CoreExpr } from "../Core/CoreExpr.ts";
 import { collectPatternSubst } from "../Interpreter/Pattern.ts";
 import { Expr, showExpr } from "../Parser/Expr.ts";
 import { gen } from "../Utils/Common.ts";
-import { emptyEnv, envAdd, envGet, envHas, envSum } from "../Utils/Env.ts";
+import { emptyEnv, envAdd, envAddMut, envGet, envHas, envRem, envSum } from "../Utils/Env.ts";
 import { isNone } from "../Utils/Mabye.ts";
 import { bind, error, fold, ok, Result } from "../Utils/Result.ts";
 import { binopTy, boolTy, constantTy, funReturnTy, funTy, unitTy } from "./FixedTypes.ts";
-import { freshInstance, freshTyVar, generalizeTy, isTyConst, MonoTy, PolyTy, polyTy, resetTyVars, showMonoTy, tyConst, TypeEnv } from "./Types.ts";
+import { freshInstance, freshTyVar, generalizeTy, isTyConst, MonoTy, PolyTy, polyTy, resetTyVars, showMonoTy, showTypeEnv, tyConst, TypeEnv } from "./Types.ts";
 import { showSubst, substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "./Unification.ts";
 
 export type TypeError = string;
@@ -51,6 +51,8 @@ const collectExprTypeSubsts = (env: TypeEnv, expr: CoreExpr, tau: MonoTy): Resul
             if (!envHas(env, expr.name)) {
                 throw new Error(`unbound variable "${expr.name}"`);
             }
+
+            // console.log(expr.name, ':', showPolyTy(envGet(env, expr.name)));
 
             const ty = freshInstance(envGet(env, expr.name));
 
@@ -116,7 +118,8 @@ const collectExprTypeSubsts = (env: TypeEnv, expr: CoreExpr, tau: MonoTy): Resul
                 const sig1Gamma = substituteEnv(env, sig1);
                 const sig1Tau1 = substituteMono(tau1, sig1);
                 const sig1Tau = substituteMono(tau, sig1);
-                const gammaX = envAdd(env, expr.left, generalizeTy(sig1Gamma, sig1Tau1));
+                const sig1Tau1Gen = generalizeTy(envRem(sig1Gamma, expr.left), sig1Tau1);
+                const gammaX = envAdd(sig1Gamma, expr.left, sig1Tau1Gen);
                 return bind(collectExprTypeSubsts(gammaX, expr.right, sig1Tau), sig2 => {
                     return ok(substCompose(sig2, sig1));
                 });
@@ -195,72 +198,25 @@ const collectExprTypeSubsts = (env: TypeEnv, expr: CoreExpr, tau: MonoTy): Resul
     }
 };
 
-export const registerDeclTypes = (decls: CoreDecl[]): Result<TypeEnv, TypeError> => {
+export const registerDataTypes = (decls: CoreDecl[]): TypeEnv => {
     let gamma = emptyEnv<PolyTy>();
 
-    const funs: Array<CoreFuncDecl> = [];
-
     for (const decl of decls) {
-        switch (decl.type) {
-            case 'fun': // assign a fresh type variable to each function
-                {
-                    const tau = freshTyVar();
-                    gamma = envAdd(gamma, decl.name, polyTy(tau));
-                    funs.push(decl);
-                    break;
-                }
-            case 'datatype':
-                {
-                    const ty = tyConst(decl.name, ...decl.typeVars);
+        if (decl.type == 'datatype') {
+            const ty = tyConst(decl.name, ...decl.typeVars);
 
-                    for (const variant of decl.variants) {
-                        const variantTy = variant.args.length === 0 ?
-                            ty :
-                            funTy(variant.args[0], ...variant.args.slice(1), ty);
+            for (const variant of decl.variants) {
+                const variantTy = variant.args.length === 0 ?
+                    ty :
+                    funTy(variant.args[0], ...variant.args.slice(1), ty);
 
-                        assert(isTyConst(variantTy));
+                assert(isTyConst(variantTy));
 
-                        const realType = polyTy(tyConst(variantTy.name, ...variantTy.args), ...decl.typeVars);
-                        gamma = envAdd(gamma, variant.name, realType);
-                    }
-                    break;
-                }
-        }
-    }
-
-    return fold(funs, (gamma, fun) => collectDeclTypes(gamma, fun), gamma);
-};
-
-const collectDeclTypes = (env: TypeEnv, decl: CoreDecl): Result<TypeEnv, TypeError> => {
-    switch (decl.type) {
-        case 'fun':
-            {
-                const tau = envGet(env, decl.name);
-
-                const argsTypes = decl.args.map(() => freshTyVar());
-                // return type
-                const retTy = freshTyVar();
-
-                const fTy = argsTypes.length > 1 ?
-                    funTy(argsTypes[0], argsTypes[1], ...argsTypes.slice(2), retTy) :
-                    argsTypes.length === 1 ?
-                        funTy(argsTypes[0], retTy) :
-                        funTy(unitTy, retTy);
-
-                const gammaArgs = argsTypes.reduce((env, ty, idx) => envAdd(env, decl.args[idx], polyTy(ty)), env);
-                const gammaF = envAdd(gammaArgs, decl.name, polyTy(fTy));
-                return bind(collectExprTypeSubsts(gammaF, decl.body, retTy), sig => {
-                    const sigGamma = substituteEnv(env, sig);
-                    const sigFTy = substituteMono(fTy, sig);
-                    const gammaF = envAdd(sigGamma, decl.name, generalizeTy(sigGamma, sigFTy));
-                    return bind(checkedUnify(substituteMono(freshInstance(tau), sig), sigFTy, decl.body), sig2 => {
-                        const sigGamma2 = substituteEnv(gammaF, sig2);
-                        return ok(sigGamma2);
-                    });
-                });
+                const realType = polyTy(tyConst(variantTy.name, ...variantTy.args), ...decl.typeVars);
+                gamma = envAddMut(gamma, variant.name, realType);
             }
-        case 'datatype': {
-            return ok(env);
         }
     }
+
+    return gamma;
 };
