@@ -1,6 +1,8 @@
 import { assert } from "https://deno.land/std@0.73.0/testing/asserts.ts";
 import { showValue, TyConstVal } from "../Interpreter/Value.ts";
-import { Expr, VarExpr } from "./Expr.ts";
+import { decons } from "../Utils/Common.ts";
+import { AppExpr, Expr, VarExpr } from "./Expr.ts";
+import { expr } from "./Parser.ts";
 
 type LambdaExpr<T, K> = { type: 'lambda', arg: K, body: T };
 
@@ -48,4 +50,16 @@ export const showList = (lst: TyConstVal): string => {
     }
 
     return `[${acc}]`;
+};
+
+export const appOf = (...exprs: Expr[]): AppExpr => {
+    assert(exprs.length > 1);
+
+    const e = exprs.pop() as Expr;
+
+    return {
+        type: 'app',
+        lhs: exprs.length > 1 ? appOf(...exprs) : exprs[0],
+        rhs: e
+    };
 };

@@ -110,4 +110,4 @@ listPrimes n = listPrimes' n [];
 listPrimes' 0 acc = acc;
 listPrimes' n acc = listPrimes' (n - 1) (if isPrime n then (n::acc) else acc);
 
-main = listPrimes 1000;
+main = listPrimes 100;

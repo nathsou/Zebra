@@ -1,53 +1,11 @@
 
 data Bool = True | False;
-data List a = Nil | Cons a (List a);
-data Maybe a = None | Some a;
 
-filter _ [] = [];
-filter f (h :: tl) =
-    let next = filter f tl in
-    if f h then h :: next else next;
-
-isPrime n =
-    if n == 2 then True
-    else if or (n < 2) (n % 2 == 0) then False
-    else let rec aux n i =
-        if i * i > n then True
-        else if n % i == 0 then False
-        else aux n (i + 2)
-    in aux n 3;
-
-or False False = False;
-or _ _ = True;
-
-pow n 0 = 1;
-pow n p = n * (pow n (p - 1));
-
-isMersennePrime p = if isPrime p then isPrime ((pow 2 p) - 1) else False;
-
+-- mutually recursive functions
 even 0 = True;
 even n = odd (n - 1);
 
 odd 0 = False;
 odd n = even (n - 1);
 
-head (h :: _) = h;
-tail (_ :: tl) = tl;
-
-map _ [] = [];
-map f (h :: tl) = (f h) :: (map f tl);
- 
-range n = range' n [];
-range' 0 acc = acc;
-range' n acc = range' (n - 1) (n :: acc);
-
-len [] = 0;
-len (_ :: tl) = (len tl) + 1;
-
-mapMaybe _ None = None;
-mapMaybe f (Some x) = Some (f x);
-
-append [] bs = bs;
-append (a :: as) bs = a :: (append as bs);
-
-main = len (filter isPrime (range 1000));
+main = even 21;

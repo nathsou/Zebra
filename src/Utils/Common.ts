@@ -145,3 +145,7 @@ export function swap<T>(vals: T[], i: number, j: number): T[] {
     swapMut(copy, i, j);
     return copy;
 }
+
+export const deepCopy = <T extends Object>(obj: T) => {
+    return JSON.parse(JSON.stringify(obj));
+};

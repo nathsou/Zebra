@@ -115,7 +115,7 @@ reverse lst = reverse' lst []; -- 'a : 'c -> 'd
 reverse' [] acc = acc; -- 'b
 reverse' (h::tl) acc = reverse' tl (h::acc);
 
-main = let _ = reverse [1, 2, 3] in reverse;
+main = (reverse [1, 2, 3], reverse "Hello");
 
 -- transformer les declarations en expression mutuellement récursives
 -- pour le type checking
