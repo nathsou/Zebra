@@ -1,4 +1,4 @@
-import { CoreDecl } from "../Core/CoreDecl.ts";
+import { CoreDecl, CoreFuncDecl } from "../Core/CoreDecl.ts";
 import { CoreExpr, CoreTyConstExpr } from "../Core/CoreExpr.ts";
 import { typeCheck } from "../Inferencer/TypeCheck.ts";
 import { MonoTy } from "../Inferencer/Types.ts";
@@ -7,7 +7,7 @@ import { showExpr } from "../Parser/Expr.ts";
 import { lambdaOf } from "../Parser/Sugar.ts";
 import { envAdd, envGet, envHas, envSum } from "../Utils/Env.ts";
 import { isSome } from "../Utils/Mabye.ts";
-import { bind, error, mapResult, ok, Result } from "../Utils/Result.ts";
+import { bind, error, isOk, mapResult, ok, Result } from "../Utils/Result.ts";
 import { unifyPattern } from "./Pattern.ts";
 import { ClosureVal, RecVarVal, ty, ValEnv, Value, valuesEq, ValueTypeMap } from "./Value.ts";
 
@@ -165,22 +165,28 @@ const evalExpr = (expr: CoreExpr, env: ValEnv): EvalResult => {
     }
 };
 
-export const registerDecl = (decls: CoreDecl[]): ValEnv => {
+export const registerDecl = (decls: CoreDecl[]): Result<ValEnv, EvalError> => {
     let env: Record<string, Value> = {};
+    const constants: CoreFuncDecl[] = [];
 
     for (const decl of decls) {
         switch (decl.type) {
             case 'fun': {
-                const curried = lambdaOf(decl.args.length > 0 ? decl.args : ['_'], decl.body);
-                const recvar: RecVarVal = {
-                    type: 'recvar',
-                    name: decl.name,
-                    arg: curried.arg,
-                    body: curried.body,
-                    env
-                };
+                if (decl.args.length === 0) {
+                    // constant declaration
+                    constants.push(decl);
+                } else {
+                    const curried = lambdaOf(decl.args.length > 0 ? decl.args : ['_'], decl.body);
+                    const recvar: RecVarVal = {
+                        type: 'recvar',
+                        name: decl.name,
+                        arg: curried.arg,
+                        body: curried.body,
+                        env
+                    };
 
-                env[decl.name] = recvar;
+                    env[decl.name] = recvar;
+                }
                 break;
             }
             case 'datatype': {
@@ -214,14 +220,28 @@ export const registerDecl = (decls: CoreDecl[]): ValEnv => {
         }
     }
 
-    return env;
+    // evaluate constant declarations
+    // "unbound variable" errors can occur
+    // if constants[n] references constants[m] where n < m
+    for (const { name, body } of constants) {
+        const res = evalExpr(body, env);
+
+        if (isOk(res)) {
+            env[name] = res.value;
+        } else {
+            return res;
+        }
+    }
+
+    return ok(env);
 };
 
 export const interpret = (prog: Decl[]): Result<[value: Value, type: MonoTy], string> => {
     return bind(typeCheck(prog), ({ ty, main, coreProg }) => {
-        const env = registerDecl(coreProg);
-        return bind(evalExpr(main.body, env), res => {
-            return ok([res, ty]);
+        return bind(registerDecl(coreProg), env => {
+            return bind(evalExpr(main.body, env), res => {
+                return ok([res, ty]);
+            });
         });
     });
 };

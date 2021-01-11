@@ -16,6 +16,6 @@ len x0 = case x0 of
 and True True = True;
 and _ _ = False;
 
-range n = n :: (if n == 0 then Nil else range (n - 1));
+range n = n :: (if n == 0 then [] else range (n - 1));
 
 main = len;

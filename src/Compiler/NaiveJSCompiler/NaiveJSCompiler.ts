@@ -24,8 +24,12 @@ export const naiveJsProgramOf = (prog: CoreDecl[]): string => {
 const naiveJsDeclOf = (d: PrimDecl): string => {
     switch (d.type) {
         case 'fun':
-            if (d.args.length === 0 && d.name !== 'main') {
-                return `const ${rename(d.name)} = { name: "${d.name}", args: [] };`
+            if (d.args.length === 0) {
+                if (d.name[0] === d.name[0].toUpperCase()) {
+                    return `const ${rename(d.name)} = { name: "${d.name}", args: [] };`
+                } else {
+                    return `const ${rename(d.name)} = ${naiveJsExprOf(d.body)};`;
+                }
             }
 
             const as = tail(d.args);

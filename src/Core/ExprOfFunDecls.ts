@@ -222,6 +222,16 @@ const partialFunOf = (
     f: CoreFuncDecl,
     mutuallyRecPartialFuncs: Map<string, CoreLetRecInExpr>
 ): CoreLetInExpr | CoreLetRecInExpr => {
+    // nullary function declarations are just constant declarations
+    if (f.args.length === 0) {
+        return {
+            type: 'let_in',
+            left: f.name,
+            middle: f.body,
+            right: ReplaceMe
+        };
+    }
+
     if (mutuallyRecPartialFuncs.has(f.name)) {
         return mutuallyRecPartialFuncs.get(f.name) as CoreLetRecInExpr;
     }

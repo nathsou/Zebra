@@ -8,7 +8,7 @@ data Term =
     | Var (List Char)
     | Fun (List Char) (List Term);
 
-trs _ = [
+trs = [
     (Fun "Add" [Var "a", Fun "0" []], Var "a"),
     (Fun "Add" [Fun "0" [], Var "b"], Var "b"),
     (Fun "Add" [Fun "S" [Var "a"], Var "b"], Fun "S" [Fun "Add" [Var "a", Var "b"]]),
@@ -109,7 +109,6 @@ reduce (Var x) _ = (Var x, False);
 reduce (Fun f args) rules =
     let s = Fun f (map (\t -> normalize t rules) args) in
     reduce' s (findRule s rules);
-
 reduce' t None = (t, False);
 reduce' _ (Some ((lhs, rhs), subst)) = (substitute rhs subst, True);
 
@@ -117,4 +116,4 @@ normalize term rules = normalize' (term, True) rules;
 normalize' (t, True) rules = normalize' (reduce t rules) rules;
 normalize' (t, False) rules = t;
 
-main = normalize (Fun "Range" [Fun "10" []]) (trs ());
+main = normalize (Fun "Range" [Fun "1" []]) trs;
