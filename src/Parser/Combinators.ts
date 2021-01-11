@@ -20,7 +20,7 @@ export type ParserResult<T> = Result<T, ParserError>;
 export type Parser<T> = (state: ParserState) => ParserResult<T>;
 export type ParserRef<T> = { ref: Parser<T> };
 
-type AnyParser<T> = Parser<T> | ParserRef<T>;
+type AnyParser<T> = Parser<T> | ParserRef<T>;
 
 /**
  * the state used by parsers
@@ -221,6 +221,7 @@ export const sepBy = <T>(p: AnyParser<T>, separator: TokenType): Parser<T[]> => 
             }
 
             const res = parserOf(p)(state);
+
             if (isError(res)) {
                 return res;
             } else {

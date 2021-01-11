@@ -4,161 +4,117 @@ data Bool = True | False;
 data List a = Nil | Cons a (List a);
 data Maybe a = None | Some a;
 
--- data Term =
---     | Var (List Char)
---     | Fun (List Char) (List Term);
+data Term =
+    | Var (List Char)
+    | Fun (List Char) (List Term);
 
--- elem _ [] = False;
--- elem x h::tl = if h == x then True else elem x tl;
+trs _ = [
+    (Fun "Add" [Var "a", Fun "0" []], Var "a"),
+    (Fun "Add" [Fun "0" [], Var "b"], Var "b"),
+    (Fun "Add" [Fun "S" [Var "a"], Var "b"], Fun "S" [Fun "Add" [Var "a", Var "b"]]),
+    (Fun "Add" [Var "a", Fun "S" [Var "b"]], Fun "S" [Fun "Add" [Var "a", Var "b"]]),
+    (Fun "1" [], Fun "S" [Fun "0" []]),
+    (Fun "2" [], Fun "S" [Fun "1" []]),
+    (Fun "3" [], Fun "S" [Fun "2" []]),
+    (Fun "4" [], Fun "S" [Fun "3" []]),
+    (Fun "5" [], Fun "S" [Fun "4" []]),
+    (Fun "6" [], Fun "S" [Fun "5" []]),
+    (Fun "7" [], Fun "S" [Fun "6" []]),
+    (Fun "8" [], Fun "S" [Fun "7" []]),
+    (Fun "9" [], Fun "S" [Fun "8" []]),
+    (Fun "10" [], Fun "S" [Fun "9" []]),
+    (Fun "Range" [Var "n"], Fun "RangeAux" [Var "n", Fun "Nil" []]),
+    (Fun "RangeAux" [Fun "0" [], Var "acc"], Var "acc"),
+    (Fun "RangeAux" [Fun "S" [Var "n"], Var "acc"], Fun "RangeAux" [Var "n", Fun "Cons" [Var "n", Var "acc"]])
+];
 
--- -- waiting for type classes...
--- isUpper c = elem c "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+ruleName (Fun f _, _) = f;
 
--- not True = False;
--- not False = True;
+map _ [] = [];
+map f h::tl = (f h) :: (map f tl);
 
--- isLower c = not (isUpper c);
+prepend as [] = as;
+prepend [] bs = bs;
+prepend a::as bs = a :: (prepend as bs);
 
--- map _ [] = [];
--- map f h::tl = (f h)::(map f tl); 
+append as bs = prepend bs as;
 
--- satisfy _ "" = None;
--- satisfy test c::cs =
---     if test c then
---         Some ([c], cs)
---     else None;
+flatten lists = flatten' lists [];
+flatten' [] acc = acc;
+flatten' lst::lists acc = flatten' lists (append lst acc);
 
--- isDigit c = elem c "0123456789";
+intercalate _ [] = [];
+intercalate _ [x] = [x];
+intercalate sep h::tl = h :: sep :: (intercalate sep tl);
 
--- parseDigit str = satisfy isDigit str;
--- parseUpper str = satisfy isUpper str;
--- parseLower str = satisfy isLower str;
--- parseChar c str = satisfy (\char -> char == c) str; 
+join sep lst = flatten (intercalate sep lst);
 
--- isLetter c = elem c "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+show (Var x) = x;
+show (Fun f []) = f;
+show (Fun f args) = flatten [f, "(", join "," (map show args), ")"];
 
--- parseLetter str = satisfy isLetter str;
+showRule (lhs, rhs) = flatten [show lhs, " -> ", show rhs];
 
--- alt fst snd str = 
---     case fst str of
---         | None -> snd str
---         | res -> res;
+len [] = 0;
+len _::tl = (len tl) + 1;
 
--- mapSome _ None = None;
--- mapSome f (Some x) = Some (f x);
+zip [] _ = [];
+zip _ [] = [];
+zip a::as b::bs = (a, b)::(zip as bs);
 
--- many parser str = many' parser str ("", str);
--- many' parser str (res, out) =
---     case parser str of
---         | None -> Some (reverse res, out)
---         | (Some ([r], rem)) -> many' parser rem (r::res, rem);
+and True True = True;
+and _ _ = False;
 
--- seq ps str = seq' ps str ("", str);
--- seq' [] _ (res, out) = Some (reverse res, out);
--- seq' p::ps str (res, out) = 
---     case p str of
---         | None -> None
---         | (Some (r, rem)) -> seq' ps rem (r::res, rem);
+unify s t = unify' [(s, t)] [];
 
--- lazyOr True b = True;
--- lazyOr False b = b ();
+unify' [] sig = Some sig;
+unify' ((Var a, Var b)::eqs) sig = 
+    if a == b then unify' eqs sig
+    else unify' eqs ((a, Var b)::sig);
+unify' ((Var a, t)::eqs) sig = unify' eqs ((a, t)::sig);
+unify' ((Fun f as, Fun g bs)::eqs) sig =
+    if and (f == g) ((len as) == (len bs))
+    then unify' (prepend (zip as bs) eqs) sig
+    else None;
+unify' _ _ = None;
 
--- isAlphaNum c = lazyOr (isLetter c) (\_ -> isDigit c);
--- parseAlphaNum str = satisfy isAlphaNum str;
 
--- prepend as bs = prepend' (reverse as) bs;
--- prepend' [] bs = bs;
--- prepend' (a::as) bs = prepend' as (a::bs);
+findSubst x [] = Var x;
+findSubst x (y, t)::tl = if x == y then t else findSubst x tl;
 
--- append as bs = prepend bs as;
+substitute (Var x) sig = findSubst x sig;
+substitute (Fun f args) sig = Fun f (map (\a -> substitute a sig) args);
 
--- flatten lists = flatten' lists [];
--- flatten' [] acc = acc;
--- flatten' lst::lists acc = flatten' lists (append lst acc);
+-- TODO: fix compilation of case .. of expressions
 
--- mapParser p f str = mapSome (\(res, rem) -> (f res, rem)) (p str);
+-- findRule _ [] = None;
+-- findRule t (lhs, rhs)::rules = 
+--     case unify lhs t of
+--         | None -> findRule t rules
+--         | Some sig -> Some ((lhs, rhs), sig);
 
--- parseTerm _ = alt parseVar parseFun;
+findRule _ [] = None;
+findRule t (lhs, rhs)::rules = findRule' t (unify lhs t) (lhs, rhs) rules;
+findRule' t None _ rules = findRule t rules;
+findRule' t (Some subst) r _ = Some (r, subst);
 
--- parseVar str =
---     mapParser
---         (seq [parseLower, many parseAlphaNum])
---         (\lst -> Var (flatten lst)) str;
+-- reduce (Var x) _ = (Var x, False);
+-- reduce (Fun f args) rules = 
+--     let s = Fun f (map (\a -> normalize a rules) args) in
+--     case findRule s rules of
+--         | None -> (s, False)
+--         | Some ((_, rhs), sig) -> (substitute rhs sig, True);
 
--- parseNullaryFun str =
---     mapParser
---         (seq [parseUpper, many parseAlphaNum])
---         (\lst -> Fun (flatten lst) []) str;
+reduce (Var x) _ = (Var x, False);
+reduce (Fun f args) rules =
+    let s = Fun f (map (\t -> normalize t rules) args) in
+    reduce' s (findRule s rules);
 
--- commas p str = commas' p str [];
--- commas' p str acc = 
---     let r = case p str of 
---         | None -> acc
---         | (Some (res, rem)) -> 
---             case parseChar ',' rem of
---                 | None -> res::acc
---                 | (Some (_, rem2)) -> commas' p rem2 (res::acc)
---     in r;
+reduce' t None = (t, False);
+reduce' _ (Some ((lhs, rhs), subst)) = (substitute rhs subst, True);
 
--- parseFun str =
---     mapParser
---         (seq [parseUpper, many parseAlphaNum, parseChar '('])
---         (\lst -> Fun (flatten lst) []) str;
+normalize term rules = normalize' (term, True) rules;
+normalize' (t, True) rules = normalize' (reduce t rules) rules;
+normalize' (t, False) rules = t;
 
--- 1. identify function dependencies (mutually-recursive, one-sided recursive...) using a dependency graph
--- 2. reorder one-sided recursive functions and their dependencies
--- 3. rewrite the mutally recursive functions (p. 57 http://caml.inria.fr/pub/docs/u3-ocaml/ocaml.pdf)
--- 5. the whole program is now a single expression
--- 4. type-check on this expression
-
-reverse lst = reverse' lst []; -- 'a : 'c -> 'd
-reverse' [] acc = acc; -- 'b
-reverse' (h::tl) acc = reverse' tl (h::acc);
-
-main = (reverse [1, 2, 3], reverse "Hello");
-
--- transformer les declarations en expression mutuellement récursives
--- pour le type checking
-
--- odd 0 = False;
--- odd n = even (n - 1);
-
--- even 0 = True;
--- even n = odd (n - 1);
-
--- main = odd 17;
-
--- main =
---     let rec odd n = case n of 0 -> False | n -> even (n - 1);
-
--- main = 
---     let len = \lst -> let rec len' lst l =
---         case lst of [] -> l | _::tl -> len' tl (l + 1)
---         in len' lst
---     in len;
-
--- len lst = len' lst 0;
--- len' [] l = l;
--- len' _::tl l = len' tl (l + 1);
-
--- not True = False;
--- not False = True;
-
--- main = let _ = (reverse [1, 2, 3], reverse "hey") in reverse;
--- main = let _ = (reverse [1, 2, 3], reverse "hey") in reverse;
-
--- main = let _ = len "Hey" in len;
--- main = map (\n -> n * n) [1, 2, 3];
-
--- len [] = 0;
--- len _::tl = (len tl) + 1; 
--- main = let _ = len [1, 2, 3] in len;
-
--- main = let f = \x -> [x] in let _ = f 1 in f;
-
--- f x = [x];
--- main = let _ = f 1 in f;
-
--- main = 
---     let rec len lst = case lst of [] -> 0 | _::tl -> (len tl) + 1
---     in let _ = len [1, 2, 3] in len;
+main = normalize (Fun "Range" [Fun "10" []]) (trs ());

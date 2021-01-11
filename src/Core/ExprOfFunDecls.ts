@@ -11,94 +11,6 @@ type VarEnv = { [key: string]: true };
 type Graph<T> = Map<T, Set<T>>;
 type Dependencies = Graph<string>;
 
-const addEnvMut = (env: VarEnv, ...xs: string[]): VarEnv => {
-    for (const x of xs) {
-        env[x] = true;
-    }
-
-    return env;
-};
-
-const addEnv = (env: VarEnv, ...xs: string[]) => addEnvMut({ ...env }, ...xs);
-const varEnvOf = (...xs: string[]) => addEnvMut({}, ...xs);
-
-const renameMutualRecFunc = (f: string) => `%${f}%`;
-
-const varOf = (x: string): CoreVarExpr => ({ type: 'variable', name: x });
-
-const rewriteMutuallyRecursiveFunc = (
-    f: CoreFuncDecl,
-    undef: Readonly<string[]>,
-    defs: { top: CoreLetInExpr | null, bottom: CoreLetInExpr | null }
-): CoreLetRecInExpr => {
-    const [x, xs] = decons([
-        ...undef,
-        ...f.args
-    ]);
-
-    const f_ = renameMutualRecFunc(f.name);
-
-    const nextLetIn: CoreLetInExpr = {
-        type: 'let_in',
-        left: f.name,
-        middle: undef.length === 0 ?
-            varOf(f_) :
-            coreOf(appOf(...[f_, ...undef].map(varOf))),
-        right: varOf('ReplaceMe')
-    };
-
-    if (defs.top === null || defs.bottom === null) {
-        defs.top = nextLetIn;
-        defs.bottom = defs.top;
-    } else {
-        nextLetIn.right = defs.top;
-        defs.top = nextLetIn;
-    }
-
-    defs.bottom.right = f.body;
-
-    const defsSection = deepCopy(defs.top);
-
-    const middle = xs.length > 0 ? lambdaOf(xs, defsSection) : defsSection;
-
-    return {
-        type: 'let_rec_in',
-        funName: f_,
-        arg: x,
-        middle,
-        right: varOf('ReplaceMe')
-    };
-};
-
-const rewriteMutuallyRecursiveFuncs = (
-    funcs: CoreFuncDecl[]
-): CoreLetRecInExpr => {
-    assert(funcs.length > 1);
-    const [f, fs] = decons(funcs);
-
-    const remaining = fs.map(f => f.name);
-    const defs: {
-        top: CoreLetInExpr | null,
-        bottom: CoreLetInExpr | null
-    } = { top: null, bottom: null };
-
-    const top = rewriteMutuallyRecursiveFunc(f, remaining, defs);
-
-    const bottom = fs.reduce((prev, f) => {
-        remaining.shift();
-        const next = rewriteMutuallyRecursiveFunc(f, remaining, defs);
-        prev.right = next;
-        return next;
-    }, top);
-
-    if (defs.top !== null && defs.bottom !== null) {
-        defs.bottom.right = varOf('ReplaceMe');
-        bottom.right = defs.top;
-    }
-
-    return top;
-};
-
 // returns a single expression representing the whole program
 // which contains no global function declarations
 // and where mutually-recursive functions have been
@@ -120,11 +32,14 @@ export const singleExprProgOf = (prog: CoreDecl[]): SingleExprProg => {
 
     const mutuallyRecPartialFuncs = new Map<string, CoreLetRecInExpr>();
 
+    // console.log(mutuallyRec);
+
     if (mutuallyRec.size > 0) {
         // each group of mutually recursive functions
         // is rewritten into a single expression
         // therefore dependencies have to be updated
         // accordingly
+
         for (const comp of connectedComponents(mutuallyRec)) {
             const [f, fs] = decons(comp);
 
@@ -162,6 +77,7 @@ export const singleExprProgOf = (prog: CoreDecl[]): SingleExprProg => {
         }
     }
 
+    // reorder functions according to dependencies
     const reordered = [...reorderFunDecls('main', deps)]
         .filter(f => funs.has(f))
         .map(f => funs.get(f) as CoreFuncDecl);
@@ -172,6 +88,106 @@ export const singleExprProgOf = (prog: CoreDecl[]): SingleExprProg => {
     };
 };
 
+const addEnvMut = (env: VarEnv, ...xs: string[]): VarEnv => {
+    for (const x of xs) {
+        env[x] = true;
+    }
+
+    return env;
+};
+
+const addEnv = (env: VarEnv, ...xs: string[]) => addEnvMut({ ...env }, ...xs);
+const varEnvOf = (...xs: string[]) => addEnvMut({}, ...xs);
+
+const renameMutualRecFunc = (f: string) => `%${f}%`;
+
+const varOf = (x: string): CoreVarExpr => ({ type: 'variable', name: x });
+
+const ReplaceMe = varOf('ReplaceMe');
+
+// suppose f and g are mutally recursive:
+//      let rec f = \x -> body_f
+//      and let rec g = \x -> body_g in ..
+
+// then: let rec f' = \g -> \x -> let f = f' g in body_f in 
+//          let rec g' = \x -> let g = g' in body_g
+//       in ..
+// is equivalent and directly recursive
+const rewriteMutuallyRecursiveFunc = (
+    f: CoreFuncDecl,
+    // functions not yet in f's environment
+    undefinedFuncs: Readonly<string[]>,
+    // accumulate the original function definitions
+    defs: { top: CoreLetInExpr | null, bottom: CoreLetInExpr | null }
+): CoreLetRecInExpr => {
+    const [x, xs] = decons([
+        ...undefinedFuncs,
+        ...f.args
+    ]);
+
+    const f_ = renameMutualRecFunc(f.name);
+
+    const nextDef: CoreLetInExpr = {
+        type: 'let_in',
+        left: f.name,
+        middle: undefinedFuncs.length === 0 ?
+            varOf(f_) :
+            coreOf(appOf(...[f_, ...undefinedFuncs].map(varOf))),
+        right: ReplaceMe
+    };
+
+    if (defs.top === null || defs.bottom === null) {
+        defs.top = nextDef;
+        defs.bottom = defs.top;
+    } else {
+        nextDef.right = defs.top;
+        defs.top = nextDef;
+    }
+
+    defs.bottom.right = f.body;
+
+    const defsSection = deepCopy(defs.top);
+
+    const middle = xs.length > 0 ? lambdaOf(xs, defsSection) : defsSection;
+
+    return {
+        type: 'let_rec_in',
+        funName: f_,
+        arg: x,
+        middle,
+        right: ReplaceMe
+    };
+};
+
+const rewriteMutuallyRecursiveFuncs = (
+    funcs: CoreFuncDecl[]
+): CoreLetRecInExpr => {
+    assert(funcs.length > 1);
+    const [f, fs] = decons(funcs);
+
+    const remaining = fs.map(f => f.name);
+    const defs: {
+        top: CoreLetInExpr | null,
+        bottom: CoreLetInExpr | null
+    } = { top: null, bottom: null };
+
+    const top = rewriteMutuallyRecursiveFunc(f, remaining, defs);
+
+    const bottom = fs.reduce((prev, f) => {
+        remaining.shift();
+        const next = rewriteMutuallyRecursiveFunc(f, remaining, defs);
+        prev.right = next;
+        return next;
+    }, top);
+
+    if (defs.top !== null && defs.bottom !== null) {
+        defs.bottom.right = ReplaceMe;
+        bottom.right = defs.top;
+    }
+
+    return top;
+};
+
 const partialLetRecIn = (f: CoreFuncDecl): CoreLetRecInExpr => {
     const [x, xs] = decons(f.args);
 
@@ -180,7 +196,7 @@ const partialLetRecIn = (f: CoreFuncDecl): CoreLetRecInExpr => {
         arg: x,
         funName: f.name,
         middle: xs.length === 0 ? f.body : lambdaOf(xs, f.body),
-        right: varOf('ReplaceMe')
+        right: ReplaceMe
     };
 };
 
@@ -189,18 +205,17 @@ const partialLetIn = (f: CoreFuncDecl): CoreLetInExpr => {
         type: 'let_in',
         left: f.name,
         middle: lambdaOf(f.args, f.body),
-        right: varOf('ReplaceMe')
+        right: ReplaceMe
     };
 };
 
-const attachRight = (expr: CoreLetInExpr | CoreLetRecInExpr, right: CoreExpr): void => {
-    if (expr.right.type === 'variable' && expr.right.name === 'ReplaceMe') {
-        expr.right = right;
-        return;
+const attachRight = (to: CoreLetInExpr | CoreLetRecInExpr, by: CoreExpr): void => {
+    if (to.right.type === 'variable' && to.right.name === ReplaceMe.name) {
+        to.right = by;
+    } else {
+        assert(to.right.type === 'let_in' || to.right.type === 'let_rec_in');
+        attachRight(to.right, by);
     }
-
-    assert(expr.right.type === 'let_in' || expr.right.type === 'let_rec_in');
-    attachRight(expr.right, right);
 };
 
 const partialFunOf = (
@@ -287,11 +302,27 @@ const connectedComponents = <T>(graph: Graph<T>): T[][] => {
     return components;
 };
 
+// checks if two nodes in a graph are connected
+const nodesConnected = <T>(a: T, b: T, graph: Graph<T>, visited = new Set<T>()): boolean => {
+    if (a === b) return true;
+    visited.add(a);
+
+    for (const adj of graph.get(a) ?? []) {
+        if (!visited.has(adj)) {
+            if (nodesConnected(adj, b, graph, visited)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+};
+
 const coRecursiveFuncs = (f: string, deps: Dependencies): Set<string> => {
     const coRecursive = new Set<string>();
 
     for (const g of deps.get(f) ?? []) {
-        if (deps.get(g)?.has(f)) {
+        if (nodesConnected(g, f, deps)) {
             coRecursive.add(g);
         }
     }
@@ -316,7 +347,6 @@ export const funcDeclsDependencies = (
     funDecls: CoreFuncDecl[],
     dataTypeDecls: DataTypeDecl[]
 ): Dependencies => {
-
     const env = varEnvOf(...dataTypeVariants(dataTypeDecls));
 
     const deps = new Map<string, Set<string>>();

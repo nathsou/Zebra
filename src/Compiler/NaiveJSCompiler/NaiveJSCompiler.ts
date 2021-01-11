@@ -85,7 +85,7 @@ const isNat = (n: string) => /[0-9]+/.test(n);
 const isChar = (c: string) => c[0] === "'";
 const isBool = (s: string) => s === 'True' || s === 'False';
 
-const nativeRepr = (ctor: string) => {
+const nativeRepr = (ctor: string) => {
     if (isNat(ctor)) return ctor;
     if (isBool(ctor)) return ctor === 'True';
     if (isChar(ctor)) return ctor;
@@ -99,7 +99,7 @@ const naiveJsOfDecisionTree = (dt: DecisionTree): string => {
         case 'leaf':
             return `return ${naiveJsExprOf(dt.action)};`;
         case 'switch':
-            const isNative = dt.tests.some(([ctor, _]) => isBool(ctor) || isNat(ctor) ||isChar(ctor));
+            const isNative = dt.tests.some(([ctor, _]) => isBool(ctor) || isNat(ctor) || isChar(ctor));
 
             return `
                 switch (${occurenceOf(dt.occurence)}${isNative ? '' : '.name'}) {

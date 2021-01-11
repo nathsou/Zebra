@@ -149,3 +149,13 @@ export function swap<T>(vals: T[], i: number, j: number): T[] {
 export const deepCopy = <T extends Object>(obj: T) => {
     return JSON.parse(JSON.stringify(obj));
 };
+
+export const zipObject = <T>(keys: string[], values: T[]): { [key: string]: T } => {
+    const obj: { [key: string]: T } = {};
+
+    for (const [key, value] of zip(keys, values)) {
+        obj[key] = value;
+    }
+
+    return obj;
+};

@@ -98,8 +98,10 @@ export const collectPatternSubst = (
     vars: Record<string, PolyTy>
 ): Result<TypeSubst, string> => {
 
+    // TODO: clean up
     if (isVar(p)) {
-        if (envHas(env, p)) {
+        // if this is a datatype variant
+        if ((p[0] === p[0].toUpperCase()) && envHas(env, p)) {
             return checkedUnify(tau, freshInstance(envGet(env, p)), p);
         } else if (vars[p] !== undefined) {
             return checkedUnify(tau, freshInstance(vars[p]), p);

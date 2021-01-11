@@ -1,6 +1,5 @@
 import { MonoTy, TyConst, tyConst, typeVarNamer, TyVar } from "../Inferencer/Types.ts";
 import { Pattern } from "../Interpreter/Pattern.ts";
-import { valuesEq } from "../Interpreter/Value.ts";
 import { error } from "../Utils/Result.ts";
 import { alt, brackets, commas, keyword, leftassoc, many, map, oneOf, optional, parens, Parser, ParserRef, sepBy, seq, some, symbol, token } from "./Combinators.ts";
 import { Decl } from "./Decl.ts";
@@ -13,8 +12,9 @@ import { lambdaOf, listOf } from "./Sugar.ts";
 
 const dummyBeforeInit: () => ParserRef<any> = () => ({ ref: () => error('dummy') });
 
-export let expr: ParserRef<Expr> = dummyBeforeInit();
-let pattern: ParserRef<Pattern> = dummyBeforeInit();
+export const expr: ParserRef<Expr> = dummyBeforeInit();
+const pattern: ParserRef<Pattern> = dummyBeforeInit();
+const internalPat: ParserRef<Pattern> = dummyBeforeInit();
 
 const integer: Parser<IntegerExpr> = map(token('integer'), ({ value }) => ({
     type: 'constant', kind: 'integer', value
@@ -26,7 +26,7 @@ const char: Parser<CharExpr> = map(token('char'), ({ value: c }) => charOf(c));
 
 const constant: Parser<ConstantExpr> = oneOf(integer, char);
 
-const string: Parser<Expr> = map(token('string'), ({ value }) => 
+const string: Parser<Expr> = map(token('string'), ({ value }) =>
     listOf(value.split('').map(charOf)));
 
 const variable: Parser<VarExpr> = map(token('variable'), ({ name }) => ({ type: 'variable', name }));
@@ -96,7 +96,7 @@ const ifThenElse: Parser<Expr> = alt(map(
 ), comparison);
 
 const case_: Parser<CaseOfExprCase> = map(
-    seq(pattern, token('rightarrow'), expr),
+    seq(internalPat, token('rightarrow'), expr),
     ([p, _, e]) => ({ pattern: p, expr: e })
 );
 
@@ -225,16 +225,21 @@ const funPattern: Parser<Pattern> = alt(map(
     ([f, args]) => ({ name: f.name, args })
 ), nullaryFunPattern);
 
+internalPat.ref = alt(map(
+    seq(token('identifier'), some(pattern)),
+    ([f, args]) => ({ name: f.name, args })
+), pattern);
+
 const unitPat = alt(map(seq(token('lparen'), token('rparen')), () => ({ name: 'unit', args: [] })), funPattern);
 
 const tuplePat = alt(map(
-    seq(token('lparen'), pattern, token('comma'), commas(pattern), token('rparen')),
+    seq(token('lparen'), internalPat, token('comma'), commas(internalPat), token('rparen')),
     ([_l, h, _c, vals, _r]) => ({ name: 'tuple', args: [h, ...vals] })
 ), unitPat);
 
 const nilPat = alt(map(seq(token('lbracket'), token('rbracket')), () => ({ name: 'Nil', args: [] })), tuplePat);
 const listPat = alt(map(
-    seq(token('lbracket'), commas(pattern), token('rbracket')),
+    seq(token('lbracket'), commas(internalPat), token('rbracket')),
     ([_l, vals, _r]) => [...vals].reverse()
         .reduce((acc, c) => ({ name: 'Cons', args: [c, acc] }), ({ name: 'Nil', args: [] }))
 ), nilPat);

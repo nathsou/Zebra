@@ -2,7 +2,8 @@ import { assert } from "https://deno.land/std@0.73.0/testing/asserts.ts";
 import { isVar } from "../Interpreter/Pattern.ts";
 import { Decl, FuncDecl } from "../Parser/Decl.ts";
 import { CaseOfExpr, Expr } from "../Parser/Expr.ts";
-import { gen } from "../Utils/Common.ts";
+import { renameVars } from "../Parser/RenameVars.ts";
+import { gen, zipObject } from "../Utils/Common.ts";
 import { CoreDecl, CoreFuncDecl } from "./CoreDecl.ts";
 import { CoreCaseOfExpr, CoreExpr, CoreTyConstExpr } from "./CoreExpr.ts";
 
@@ -222,11 +223,12 @@ const casify = (name: string, funs: FuncDecl[]): FuncDecl => {
         `inconsistent arities for '${name}', expected ${arity} arguments`
     );
 
-    const args = gen(arity, n => `x${n}`);
+    // each definition can name arguments differently
+    const renamedArgs = gen(arity, n => `x${n}`);
 
     const testedVal: Expr = arity === 1 ?
-        { type: 'variable', name: args[0] } :
-        tupleOf(args.map(x => ({ type: 'variable', name: x })));
+        { type: 'variable', name: renamedArgs[0] } :
+        tupleOf(renamedArgs.map(x => ({ type: 'variable', name: x })));
 
     const caseOf: CaseOfExpr = {
         type: 'case_of',
@@ -234,14 +236,17 @@ const casify = (name: string, funs: FuncDecl[]): FuncDecl => {
         arity,
         cases: funs.map(f => ({
             pattern: f.args.length === 1 ? f.args[0] : { name: 'tuple', args: f.args },
-            expr: f.body
+            expr: renameVars(
+                f.body,
+                zipObject(f.args.map(x => isVar(x) ? x : ''), renamedArgs)
+            )
         }))
     };
 
     return {
         type: 'fun',
         name,
-        args,
+        args: renamedArgs,
         body: caseOf
     };
 };
