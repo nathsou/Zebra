@@ -108,6 +108,6 @@ isPrime n = boolOf (eval (LetRecIn 9 0 (
 listPrimes n = listPrimes' n [];
 
 listPrimes' 0 acc = acc;
-listPrimes' n acc = listPrimes' (n - 1) (if isPrime n then (n::acc) else acc);
+listPrimes' n acc = listPrimes' (n - 1) (if isPrime n then n::acc else acc);
 
 main = listPrimes 100;

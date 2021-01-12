@@ -1,10 +1,8 @@
+data Hello a = Hey a;
 
-data Bool = True | False;
+test n (Hey x) = 
+    case n of
+        | 1 -> x
+        | 2 -> 2 * x;
 
-findRule False = False;
-findRule t = 
-    case t of
-        | True -> t
-        | False -> True;
-
-main = findRule;
+main = test 1 (Hey 21);

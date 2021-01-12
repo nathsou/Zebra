@@ -9,7 +9,7 @@ export const compileNaive = (source: string): Result<[ty: MonoTy, js: string], s
     return bind(parse(source, program), prog => {
         return bind(typeCheck(prog), ({ ty, coreProg }) => {
             let js = naiveJsProgramOf(coreProg);
-            js += '\n\nconsole.log(main());';
+            js += '\n\nconsole.log(main);';
             return ok([ty, js]);
         });
     });

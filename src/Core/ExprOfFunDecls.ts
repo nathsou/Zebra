@@ -97,7 +97,7 @@ const addEnvMut = (env: VarEnv, ...xs: string[]): VarEnv => {
 };
 
 const addEnv = (env: VarEnv, ...xs: string[]) => addEnvMut({ ...env }, ...xs);
-const varEnvOf = (...xs: string[]) => addEnvMut({}, ...xs);
+export const varEnvOf = (...xs: string[]) => addEnvMut({}, ...xs);
 
 const renameMutualRecFunc = (f: string) => `%${f}%`;
 

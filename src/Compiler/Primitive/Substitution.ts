@@ -2,7 +2,10 @@ import { Dict, dictGet, dictHas } from "../../Utils/Common.ts";
 import { DecisionTree } from "../DecisionTrees/DecisionTree.ts";
 import { PrimExpr } from "./PrimitiveExpr.ts";
 
-export const substitutePrim = (e: PrimExpr, subst: Dict<PrimExpr>): PrimExpr => {
+export const substitutePrim = (
+    e: PrimExpr,
+    subst: Dict<PrimExpr>
+): PrimExpr => {
     switch (e.type) {
         case 'variable':
             if (dictHas(subst, e.name)) {
@@ -69,12 +72,25 @@ export const substitutePrim = (e: PrimExpr, subst: Dict<PrimExpr>): PrimExpr => 
     }
 };
 
-const substituteDecisionTree = (dt: DecisionTree, subst: Dict<PrimExpr>): DecisionTree => {
-    if (dt.type === 'leaf') {
-        return {
-            type: 'leaf',
-            action: substitutePrim(dt.action, subst)
-        };
+const substituteDecisionTree = (
+    dt: DecisionTree,
+    subst: Dict<PrimExpr>
+): DecisionTree => {
+    switch (dt.type) {
+        case 'leaf':
+            return {
+                type: 'leaf',
+                bindings: dt.bindings,
+                action: substitutePrim(dt.action, subst)
+            };
+        case 'switch':
+            return {
+                type: 'switch',
+                occurence: dt.occurence,
+                tests: dt.tests.map(([ctor, subtree]) =>
+                    [ctor, substituteDecisionTree(subtree, subst)]
+                )
+            };
     }
 
     return dt;

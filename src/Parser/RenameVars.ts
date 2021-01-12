@@ -65,12 +65,17 @@ export const renameVars = (e: Expr, renameMap: { [x: string]: string }): Expr =>
             }
         }
         case 'case_of': {
+            console.log('case_of', e.cases.map(({ pattern, expr }) => ({
+                pattern,
+                expr: renameVars(expr, renameMap)
+            })));
+
             return {
                 type: 'case_of',
                 arity: e.arity,
-                cases: e.cases.map(c => ({
-                    pattern: c.pattern,
-                    expr: renameVars(c.expr, renameMap)
+                cases: e.cases.map(({ pattern, expr }) => ({
+                    pattern,
+                    expr: renameVars(expr, renameMap)
                 })),
                 value: renameVars(e.value, renameMap)
             };

@@ -85,35 +85,21 @@ findSubst x (y, t)::tl = if x == y then t else findSubst x tl;
 substitute (Var x) sig = findSubst x sig;
 substitute (Fun f args) sig = Fun f (map (\a -> substitute a sig) args);
 
--- TODO: fix compilation of case .. of expressions
-
--- findRule _ [] = None;
--- findRule t (lhs, rhs)::rules = 
---     case unify lhs t of
---         | None -> findRule t rules
---         | Some sig -> Some ((lhs, rhs), sig);
-
 findRule _ [] = None;
-findRule t (lhs, rhs)::rules = findRule' t (unify lhs t) (lhs, rhs) rules;
-findRule' t None _ rules = findRule t rules;
-findRule' t (Some subst) r _ = Some (r, subst);
-
--- reduce (Var x) _ = (Var x, False);
--- reduce (Fun f args) rules = 
---     let s = Fun f (map (\a -> normalize a rules) args) in
---     case findRule s rules of
---         | None -> (s, False)
---         | Some ((_, rhs), sig) -> (substitute rhs sig, True);
+findRule t (lhs, rhs)::rules = 
+    case unify lhs t of
+        | None -> findRule t rules
+        | Some sig -> Some ((lhs, rhs), sig);
 
 reduce (Var x) _ = (Var x, False);
-reduce (Fun f args) rules =
-    let s = Fun f (map (\t -> normalize t rules) args) in
-    reduce' s (findRule s rules);
-reduce' t None = (t, False);
-reduce' _ (Some ((lhs, rhs), subst)) = (substitute rhs subst, True);
+reduce (Fun f args) rules = 
+    let s = Fun f (map (\a -> normalize a rules) args) in
+    case findRule s rules of
+        | None -> (s, False)
+        | Some ((_, rhs), sig) -> (substitute rhs sig, True);
 
 normalize term rules = normalize' (term, True) rules;
 normalize' (t, True) rules = normalize' (reduce t rules) rules;
 normalize' (t, False) rules = t;
 
-main = normalize (Fun "Range" [Fun "1" []]) trs;
+main = normalize (Fun "Range" [Fun "10" []]) trs;

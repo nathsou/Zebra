@@ -81,5 +81,6 @@ export type PrimBinopExpr = {
 export type PrimSubtermOccurence = {
     type: 'subterm',
     index: number,
-    pos: number[]
+    pos: number[],
+    argIndex: number
 };

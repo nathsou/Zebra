@@ -14,6 +14,7 @@ export const typeCheck = (prog: Decl[]): Result<{
     singleExprProg: SingleExprProg
 }, string> => {
     const coreProg = casifyFunctionDeclarations(prog);
+
     const main = coreProg
         .find(f => f.type === 'fun' && f.name === 'main') as Maybe<CoreFuncDecl>;
 

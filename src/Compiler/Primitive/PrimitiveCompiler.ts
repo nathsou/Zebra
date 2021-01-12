@@ -8,9 +8,7 @@ import { clauseMatrixOf, compileClauseMatrix } from "../DecisionTrees/DecisionTr
 import { PrimDecl } from "./PrimitiveDecl.ts";
 import { PrimExpr } from "./PrimitiveExpr.ts";
 
-export const primitiveProgramOf = (prog: Decl[]): PrimDecl[] => {
-    const coreProg = casifyFunctionDeclarations(prog);
-
+export const primitiveProgramOfCore = (coreProg: CoreDecl[]): PrimDecl[] => {
     const decls: PrimDecl[] = [];
 
     for (const decl of coreProg) {
@@ -18,6 +16,10 @@ export const primitiveProgramOf = (prog: Decl[]): PrimDecl[] => {
     }
 
     return decls;
+};
+
+export const primitiveProgramOf = (prog: Decl[]): PrimDecl[] => {
+    return primitiveProgramOfCore(casifyFunctionDeclarations(prog));
 };
 
 const primitiveDeclOfCoreDecl = (d: CoreDecl): PrimDecl[] => {
@@ -68,6 +70,7 @@ export const primitiveOf = (e: CoreExpr): PrimExpr => {
         case 'case_of': {
             const m = clauseMatrixOf(e);
             const dt = compileClauseMatrix(e.arity, m, new Set());
+
             return {
                 type: 'switch',
                 value: primitiveOf(e.value),

@@ -3,7 +3,7 @@ import { lambdaOf } from "../../Parser/Sugar.ts";
 import { head, tail } from "../../Utils/Common.ts";
 import { DecisionTree } from "../DecisionTrees/DecisionTree.ts";
 import { IndexedOccurence } from "../DecisionTrees/DecisionTreeCompiler.ts";
-import { primitiveProgramOf } from "../Primitive/PrimitiveCompiler.ts";
+import { primitiveProgramOfCore } from "../Primitive/PrimitiveCompiler.ts";
 import { PrimDecl } from "../Primitive/PrimitiveDecl.ts";
 import { PrimExpr } from "../Primitive/PrimitiveExpr.ts";
 
@@ -11,10 +11,32 @@ export const rename = (f: string): string => {
     return f.replace(/'/g, '_prime_');
 };
 
-export const naiveJsProgramOf = (prog: CoreDecl[]): string => {
-    let out: string[] = [];
+const equ = `
+function __equ(a, b) {
+    if (typeof a !== 'object') {
+        return a === b;
+    }
 
-    for (const decl of primitiveProgramOf(prog)) {
+    if (a.name !== b.name || a.args.length !== b.args.length) {
+        return false;
+    }
+
+    for (let i = 0; i < a.args.length; i++) {
+        if (!__equ(a.args[i], b.args[i])) {
+            return false;
+        };
+    }
+
+    return true;
+}
+`;
+
+export const naiveJsProgramOf = (prog: CoreDecl[]): string => {
+    const out = [equ];
+
+    const prim = primitiveProgramOfCore(prog);
+
+    for (const decl of prim) {
         out.push(naiveJsDeclOf(decl));
     }
 
@@ -48,8 +70,14 @@ const naiveJsExprOf = (e: PrimExpr): string => {
         case 'tyconst':
             return `({ name: "${e.name}", args: [${e.args.map(naiveJsExprOf).join(', ')}] })`;
         case 'binop':
-            const op = e.operator === '==' ? '===' : e.operator;
-            return `${naiveJsExprOf(e.left)} ${op} ${naiveJsExprOf(e.right)}`;
+            const lhs = naiveJsExprOf(e.left);
+            const rhs = naiveJsExprOf(e.right);
+            // use deep comparison
+            if (e.operator === '==') {
+                return `__equ(${lhs}, ${rhs})`;
+            }
+
+            return `${lhs} ${e.operator} ${rhs}`;
         case 'lambda':
             return `${e.arg} => ${naiveJsExprOf(e.body)}`;
         case 'let_in':
@@ -101,7 +129,18 @@ const naiveJsOfDecisionTree = (dt: DecisionTree): string => {
         case 'fail':
             return `throw new Error('pattern matching failed');`;
         case 'leaf':
-            return `return ${naiveJsExprOf(dt.action)};`;
+            const returnStmt = `return ${naiveJsExprOf(dt.action)};`;
+
+            if (Object.keys(dt.bindings).length > 0) {
+                const bindings = Object.entries(dt.bindings)
+                    .map(([x, occ]) => `const ${x} = ${naiveJsExprOf(occ)};`)
+                    .join('\n');
+
+
+                return `{\n ${bindings} \n ${returnStmt} \n}`;
+            } else {
+                return returnStmt;
+            }
         case 'switch':
             const isNative = dt.tests.some(([ctor, _]) => isBool(ctor) || isNat(ctor) || isChar(ctor));
 

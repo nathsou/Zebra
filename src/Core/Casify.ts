@@ -236,10 +236,7 @@ const casify = (name: string, funs: FuncDecl[]): FuncDecl => {
         arity,
         cases: funs.map(f => ({
             pattern: f.args.length === 1 ? f.args[0] : { name: 'tuple', args: f.args },
-            expr: renameVars(
-                f.body,
-                zipObject(f.args.map(x => isVar(x) ? x : ''), renamedArgs)
-            )
+            expr: f.body
         }))
     };
 

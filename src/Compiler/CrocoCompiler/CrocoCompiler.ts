@@ -1,4 +1,6 @@
-import { isVar, Pattern } from "../../Interpreter/Pattern.ts";
+import { coreOf } from "../../Core/Casify.ts";
+import { coreExprFreeVars, varEnvOf } from "../../Core/ExprOfFunDecls.ts";
+import { isVar, Pattern, vars } from "../../Interpreter/Pattern.ts";
 import { Decl } from "../../Parser/Decl.ts";
 import { Expr } from "../../Parser/Expr.ts";
 import { renameVars } from '../../Parser/RenameVars.ts';
@@ -46,13 +48,17 @@ export const crocoDeclOf = (decl: Decl, topLevelFuncs: string[], funcNames: Set<
 
 export const crocoPatternOf = (pattern: Pattern): string => {
     if (isVar(pattern)) return pattern;
+
     if (pattern.name === 'Nil') return '[]';
     if (pattern.name === 'Cons') {
         const [h, tl] = pattern.args;
         return `(${crocoPatternOf(h)}:${crocoPatternOf(tl)})`;
     }
+
+    if (pattern.name === 'tuple') return `(${pattern.args.map(crocoPatternOf).join(', ')})`;
     if (pattern.name[0] === "'") return pattern.name.charCodeAt(1).toString();
     if (pattern.args.length === 0) return camel(pattern.name);
+
     return `(${camel(pattern.name)} ${pattern.args.map(crocoPatternOf).join(' ')})`;
 };
 
@@ -63,6 +69,7 @@ export const crocoExprOf = (expr: Expr, topLevelFuncs: string[], funcNames: Set<
             return expr.name;
         case 'tyconst':
             if (expr.args.length === 0) return camel(expr.name);
+            if (expr.name === 'tuple') return `(${expr.args.map(a => crocoExprOf(a, topLevelFuncs, funcNames)).join(', ')})`;
             return `(${camel(expr.name)} ${expr.args.map(a => crocoExprOf(a, topLevelFuncs, funcNames)).join(' ')})`;
         case 'let_in': {
             const left = crocoPatternOf(expr.left);
@@ -95,15 +102,32 @@ export const crocoExprOf = (expr: Expr, topLevelFuncs: string[], funcNames: Set<
         case 'case_of': {
             const name = `CaseOf${topLevelFuncs.length}`;
 
+            const freeVars = new Set<string>();
+
+            // collect free variables
+            for (const c of expr.cases) {
+                const fv = coreExprFreeVars(
+                    coreOf(c.expr),
+                    varEnvOf(...vars(c.pattern), ...funcNames));
+
+                for (const v of fv) {
+                    if (v[0] === v[0].toLowerCase()) {
+                        freeVars.add(v);
+                    }
+                }
+            }
+
+            const freeVarsArgs = [...freeVars].join(' ');
+
             for (const c of expr.cases) {
                 const pat = crocoPatternOf(c.pattern);
                 const e = crocoExprOf(c.expr, topLevelFuncs, funcNames);
-                topLevelFuncs.push(`${name} ${pat} = ${e}`);
+                topLevelFuncs.push(`${name} ${pat} ${freeVarsArgs} = ${e}`);
             }
 
             const val = crocoExprOf(expr.value, topLevelFuncs, funcNames);
 
-            return `(${name} ${val})`;
+            return `(${name} ${val} ${freeVarsArgs})`;
         }
         case 'lambda': {
             const arg = crocoPatternOf(expr.arg);

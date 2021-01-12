@@ -1,8 +1,9 @@
+import { Dict } from "../../Utils/Common.ts";
 import { showPrim } from "../Primitive/PrimitiveCompiler.ts";
-import { PrimExpr, PrimTyConstExpr } from "../Primitive/PrimitiveExpr.ts";
+import { PrimExpr, PrimSubtermOccurence, PrimTyConstExpr } from "../Primitive/PrimitiveExpr.ts";
 import { AnyPat, IndexedOccurence } from "./DecisionTreeCompiler.ts";
 
-export type Leaf = { type: 'leaf', action: PrimExpr };
+export type Leaf = { type: 'leaf', action: PrimExpr, bindings: Dict<PrimSubtermOccurence> };
 export type Fail = { type: 'fail' };
 
 export type Switch = {
@@ -13,9 +14,16 @@ export type Switch = {
 
 export type DecisionTree = Leaf | Fail | Switch;
 
-export const makeLeaf = (action: PrimExpr): Leaf => ({ type: 'leaf', action });
 export const makeFail = (): Fail => ({ type: 'fail' });
-export const makeSwitch = (occurence: IndexedOccurence, tests: Switch['tests']): Switch => {
+export const makeLeaf = (
+    action: PrimExpr,
+    bindings: Dict<PrimSubtermOccurence>
+): Leaf => ({ type: 'leaf', action, bindings });
+
+export const makeSwitch = (
+    occurence: IndexedOccurence,
+    tests: Switch['tests']
+): Switch => {
     return {
         type: 'switch',
         occurence,

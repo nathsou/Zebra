@@ -1,5 +1,6 @@
+import { assert } from "https://deno.land/std@0.73.0/testing/asserts.ts";
 import { CoreCaseOfExpr, CoreCaseOfExprCase } from "../../Core/CoreExpr.ts";
-import { isFun, isVar, Pattern } from "../../Interpreter/Pattern.ts";
+import { isVar, Pattern } from "../../Interpreter/Pattern.ts";
 import { Value } from "../../Interpreter/Value.ts";
 import { decons, Dict, dictSet, gen, head, indexed, repeat, setEq, swapMut, tail, unreachable, zip } from "../../Utils/Common.ts";
 import { isSome, Maybe } from "../../Utils/Mabye.ts";
@@ -22,7 +23,10 @@ type ClauseMatrixColumn = DTPattern[];
 export type ClauseMatrix = {
     dims: [number, number],
     patterns: ClauseMatrixRow[],
-    actions: PrimExpr[]
+    actions: {
+        bindings: Dict<PrimSubtermOccurence>,
+        action: PrimExpr
+    }[]
 };
 
 export const dtPatternOf = (p: Pattern): DTPattern => {
@@ -43,42 +47,50 @@ export const subtermsOccurences = (
     sigma: Dict<PrimSubtermOccurence> = {},
     subTermIndex = 0
 ): Dict<PrimSubtermOccurence> => {
-    if (isVar(p)) return dictSet(sigma, p, {
-        type: 'subterm',
-        index: subTermIndex,
-        pos: []
-    });
-
-    const collectOccurences = (
-        p: Pattern,
-        sigma: Dict<PrimSubtermOccurence>,
-        localOffset = 0,
-        parent: PrimSubtermOccurence
-    ): void => {
-        const occ: PrimSubtermOccurence = {
+    if (isVar(p)) {
+        return dictSet(sigma, p, {
             type: 'subterm',
-            index: parent.index,
-            pos: [...parent.pos, localOffset]
-        };
-
-        if (isVar(p)) {
-            sigma[p] = occ;
-            return;
-        }
-
-        for (const [s, idx] of indexed(p.args)) {
-            collectOccurences(s, sigma, idx, occ);
-        }
-    };
+            index: subTermIndex,
+            pos: [],
+            argIndex: 0
+        });
+    }
 
     for (const [t, i] of indexed(p.args)) {
-        collectOccurences(t, sigma, i, { type: 'subterm', index: subTermIndex, pos: [] });
+        collectBindings(t, sigma, i, {
+            type: 'subterm',
+            index: subTermIndex,
+            pos: [],
+            argIndex: 0
+        });
     }
 
     return sigma;
 };
 
-const actionOf = ({ expr, pattern }: CoreCaseOfExprCase): PrimExpr => {
+export const collectBindings = (
+    p: Pattern,
+    sigma: Dict<PrimSubtermOccurence>,
+    localOffset = 0,
+    parent: PrimSubtermOccurence
+): void => {
+    const occ: PrimSubtermOccurence = {
+        type: 'subterm',
+        index: parent.index,
+        pos: [...parent.pos, localOffset],
+        argIndex: 0
+    };
+
+    if (isVar(p)) {
+        sigma[p] = occ;
+    } else {
+        for (const [s, idx] of indexed(p.args)) {
+            collectBindings(s, sigma, idx, occ);
+        }
+    }
+};
+
+const actionOf = ({ expr, pattern }: CoreCaseOfExprCase) => {
     const subst: Dict<PrimSubtermOccurence> = {};
 
     // const args = isFun(pattern) && pattern.name === 'tuple' ?
@@ -93,7 +105,7 @@ const actionOf = ({ expr, pattern }: CoreCaseOfExprCase): PrimExpr => {
 
     subtermsOccurences(args[0], subst, -1);
 
-    return substitutePrim(primitiveOf(expr), subst);
+    return { action: primitiveOf(expr), bindings: subst };
 };
 
 // all the rules must share the same head symbol and arity
@@ -203,13 +215,15 @@ export type IndexedOccurence = {
     pos: number[]
 };
 
+let argIndex = 0;
+
 export const compileClauseMatrix = (
     argsCount: number,
     matrix: ClauseMatrix,
     signature: Set<string>
 ): DecisionTree => {
     // const occurences = [...gen(argsCount, i => ({ index: i, pos: [] }))];
-    const occurences = [{ index: -1, pos: [] }];
+    const occurences = [{ index: -1, pos: [], argIndex: argIndex++ }];
     return compileClauseMatrixAux(occurences, matrix, signature);
 };
 
@@ -221,7 +235,7 @@ const compileClauseMatrixAux = (
     const [m, n] = matrix.dims;
     if (m === 0) return makeFail();
     if (m > 0 && (n === 0 || matrix.patterns[0].every(p => p === anyPat))) {
-        return makeLeaf(matrix.actions[0]);
+        return makeLeaf(matrix.actions[0].action, matrix.actions[0].bindings);
     }
 
     const colIdx = selectColumn(matrix);
@@ -238,7 +252,8 @@ const compileClauseMatrixAux = (
     for (const [ctor, arity] of hds) {
         const o1: IndexedOccurence[] = [...gen(arity, i => ({
             index: occurences[0].index,
-            pos: [...occurences[0].pos, i]
+            pos: [...occurences[0].pos, i],
+            argIndex: 0
         }))];
 
         const A_k = compileClauseMatrixAux(
