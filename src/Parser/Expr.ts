@@ -14,11 +14,17 @@ export type TyConstExpr = {
     args: Expr[]
 };
 
-export type ConstantExpr = IntegerExpr | CharExpr;
+export type ConstantExpr = IntegerExpr | FloatExpr | CharExpr;
 
 export type IntegerExpr = {
     type: 'constant',
     kind: 'integer',
+    value: number
+};
+
+export type FloatExpr = {
+    type: 'constant',
+    kind: 'float',
     value: number
 };
 
@@ -90,6 +96,8 @@ export const showExpr = (expr: Expr): string => {
         case 'constant':
             switch (expr.kind) {
                 case 'integer':
+                    return `${expr.value}`;
+                case 'float':
                     return `${expr.value}`;
                 case 'char':
                     return `'${expr.value}'`;

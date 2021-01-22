@@ -6,7 +6,7 @@ import { Decl } from "../Parser/Decl.ts";
 import { showExpr } from "../Parser/Expr.ts";
 import { lambdaOf } from "../Parser/Sugar.ts";
 import { envAdd, envGet, envHas, envSum } from "../Utils/Env.ts";
-import { isSome } from "../Utils/Mabye.ts";
+import { isSome } from "../Utils/Maybe.ts";
 import { bind, error, isOk, mapResult, ok, Result } from "../Utils/Result.ts";
 import { unifyPattern } from "./Pattern.ts";
 import { ClosureVal, RecVarVal, ty, ValEnv, Value, valuesEq, ValueTypeMap } from "./Value.ts";
@@ -123,6 +123,8 @@ const evalExpr = (expr: CoreExpr, env: ValEnv): EvalResult => {
             switch (expr.kind) {
                 case 'integer':
                     return ok({ type: 'int', value: expr.value });
+                case 'float':
+                    return ok({ type: 'float', value: expr.value });
                 case 'char':
                     return ok({ type: 'char', value: expr.value });
             }

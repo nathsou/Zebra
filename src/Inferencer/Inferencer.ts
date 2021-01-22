@@ -1,11 +1,11 @@
 import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
 import { CoreExpr } from "../Core/CoreExpr.ts";
 import { collectPatternSubst } from "../Interpreter/Pattern.ts";
-import { DataTypeDecl } from "../Parser/Decl.ts";
+import { DataTypeDecl, TypeDecl } from "../Parser/Decl.ts";
 import { Expr, showExpr } from "../Parser/Expr.ts";
 import { gen } from "../Utils/Common.ts";
 import { emptyEnv, envAdd, envAddMut, envGet, envHas, envRem, envSum } from "../Utils/Env.ts";
-import { isNone } from "../Utils/Mabye.ts";
+import { isNone } from "../Utils/Maybe.ts";
 import { bind, error, fold, ok, Result } from "../Utils/Result.ts";
 import { binopTy, boolTy, constantTy, funReturnTy, funTy, unitTy } from "./FixedTypes.ts";
 import { freshInstance, freshTyVar, generalizeTy, isTyConst, MonoTy, PolyTy, polyTy, resetTyVars, showMonoTy, tyConst, TypeEnv } from "./Types.ts";
@@ -198,21 +198,25 @@ const collectExprTypeSubsts = (env: TypeEnv, expr: CoreExpr, tau: MonoTy): Resul
     }
 };
 
-export const registerDataTypes = (dts: DataTypeDecl[]): TypeEnv => {
+export const registerTypeDecls = (decls: TypeDecl[]): TypeEnv => {
     let gamma = emptyEnv<PolyTy>();
 
-    for (const dt of dts) {
-        const ty = tyConst(dt.name, ...dt.typeVars);
+    for (const td of decls) {
+        switch (td.type) {
+            case 'datatype':
+                const ty = tyConst(td.name, ...td.typeVars);
 
-        for (const variant of dt.variants) {
-            const variantTy = variant.args.length === 0 ?
-                ty :
-                funTy(variant.args[0], ...variant.args.slice(1), ty);
+                for (const variant of td.variants) {
+                    const variantTy = variant.args.length === 0 ?
+                        ty :
+                        funTy(variant.args[0], ...variant.args.slice(1), ty);
 
-            assert(isTyConst(variantTy));
+                    assert(isTyConst(variantTy));
 
-            const realType = polyTy(tyConst(variantTy.name, ...variantTy.args), ...dt.typeVars);
-            gamma = envAddMut(gamma, variant.name, realType);
+                    const realType = polyTy(tyConst(variantTy.name, ...variantTy.args), ...td.typeVars);
+                    gamma = envAddMut(gamma, variant.name, realType);
+                }
+                break;
         }
     }
 

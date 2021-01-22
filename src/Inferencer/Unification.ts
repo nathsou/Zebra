@@ -1,6 +1,6 @@
 import { envMap } from "../Utils/Env.ts";
-import { Maybe, None, Some } from "../Utils/Mabye.ts";
-import { isTyVar, MonoTy, monoTypesEq, PolyTy, showMonoTy, showTyVar, TyConst, tyConst, TypeEnv, TyVar } from "./Types.ts";
+import { Maybe, None, Some } from "../Utils/Maybe.ts";
+import { isTyVar, MonoTy, monoTypesEq, polyTy, PolyTy, showMonoTy, showTyVar, TyConst, tyConst, TypeEnv, TyVar } from "./Types.ts";
 
 export type TypeSubst = Record<TyVar, MonoTy>;
 
@@ -65,7 +65,7 @@ const renameTyVars = (ty: MonoTy, rename: (x: TyVar) => TyVar): MonoTy => {
 };
 
 export function substitutePoly(t: PolyTy, sig: TypeSubst): PolyTy {
-    return { polyVars: t.polyVars, ty: substituteMono(t.ty, sig, t.polyVars) };
+    return polyTy(substituteMono(t.ty, sig, t.polyVars), ...t.polyVars);
 }
 
 export const substituteEnv = (env: TypeEnv, sig: TypeSubst): TypeEnv => {

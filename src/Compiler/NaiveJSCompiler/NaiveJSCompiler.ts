@@ -24,15 +24,17 @@ function __equ(a, b) {
     for (let i = 0; i < a.args.length; i++) {
         if (!__equ(a.args[i], b.args[i])) {
             return false;
-        };
+        }
     }
 
     return true;
 }
 `;
 
+let usedEqu = false;
+
 export const naiveJsProgramOf = (prog: CoreDecl[]): string => {
-    const out = [equ];
+    const out: string[] = [];
 
     const prim = primitiveProgramOfCore(prog);
 
@@ -40,7 +42,11 @@ export const naiveJsProgramOf = (prog: CoreDecl[]): string => {
         out.push(naiveJsDeclOf(decl));
     }
 
-    return out.join('\n\n');
+    const ret = (usedEqu ? `${equ}\n\n` : '') + out.join('\n\n');
+
+    usedEqu = false;
+
+    return ret;
 };
 
 const naiveJsDeclOf = (d: PrimDecl): string => {
@@ -74,6 +80,7 @@ const naiveJsExprOf = (e: PrimExpr): string => {
             const rhs = naiveJsExprOf(e.right);
             // use deep comparison
             if (e.operator === '==') {
+                usedEqu = true;
                 return `__equ(${lhs}, ${rhs})`;
             }
 
@@ -94,6 +101,7 @@ const naiveJsExprOf = (e: PrimExpr): string => {
         case 'constant':
             switch (e.kind) {
                 case 'integer':
+                case 'float':
                     return `${e.value}`;
                 case 'char':
                     return `'${e.value}'`;

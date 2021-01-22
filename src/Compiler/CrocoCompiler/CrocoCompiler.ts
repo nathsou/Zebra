@@ -36,6 +36,8 @@ export const crocoProgramOf = (prog: Decl[]): string => {
 export const crocoDeclOf = (decl: Decl, topLevelFuncs: string[], funcNames: Set<string>): string => {
     switch (decl.type) {
         case 'datatype':
+        case 'typeclass':
+        case 'instance':
             return '';
 
         case 'fun':
@@ -95,6 +97,7 @@ export const crocoExprOf = (expr: Expr, topLevelFuncs: string[], funcNames: Set<
         case 'constant':
             switch (expr.kind) {
                 case 'integer':
+                case 'float':
                     return `${expr.value}`;
                 case 'char':
                     return `${expr.value.charCodeAt(0)}`;

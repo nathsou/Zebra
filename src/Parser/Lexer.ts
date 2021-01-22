@@ -1,4 +1,4 @@
-import { isNone, isSome, Maybe } from "../Utils/Mabye.ts";
+import { isNone, isSome, Maybe } from "../Utils/Maybe.ts";
 import { error, ok, Result } from "../Utils/Result.ts";
 import { Position, showPosition, Punctuation, Token, KeywordType, } from "./Token.ts";
 
@@ -13,10 +13,15 @@ const punctuations = new Map<string, Punctuation['type']>([
     ['\\', 'lambda'],
     [';', 'semicolon'],
     ['|', 'pipe'],
-    ['::', 'cons']
+    ['::', 'cons'],
+    [':', 'colon'],
+    ['=>', 'bigarrow']
 ]);
 
-const keywords: KeywordType[] = ['let', 'rec', 'in', 'if', 'then', 'else', 'data', 'case', 'of'];
+const keywords: KeywordType[] = [
+    'let', 'rec', 'in', 'if', 'then', 'else', 'data',
+    'case', 'of', 'class', 'instance', 'where'
+];
 
 export type LexerError = string;
 
@@ -162,15 +167,34 @@ export function* lex(input: string): Iterable<Result<Token, LexerError>> {
             continue;
         }
 
-        // integers
-        if (/[0-9]/.test(cur)) {
+        // integers and floats
+        if (isDigit(cur)) {
             let n = '';
+            let isFloat = false;
+
             do {
                 n += current();
                 advance();
-            } while (/[0-9]/.test(current() ?? ''));
+            } while (isDigit(current() ?? ''));
 
-            yield ok({ type: 'integer', value: parseInt(n), ...pos });
+            // float
+            if (current() === '.') {
+                advance();
+                n += '.';
+                isFloat = true;
+
+                do {
+                    n += current();
+                    advance();
+                } while (isDigit(current() ?? ''));
+            }
+
+            if (isFloat) {
+                yield ok({ type: 'float', value: parseFloat(n), ...pos });
+            } else {
+                yield ok({ type: 'integer', value: parseInt(n), ...pos });
+            }
+
             continue;
         }
 
@@ -178,3 +202,8 @@ export function* lex(input: string): Iterable<Result<Token, LexerError>> {
         return;
     }
 }
+
+const isDigit = (c: string) => {
+    const code = c.charCodeAt(0);
+    return code >= 48 && code <= 57
+};

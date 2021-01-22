@@ -10,6 +10,7 @@ import { bind, ok } from "./Utils/Result.ts";
 const run = async (source: string, target: string): Promise<void> => {
     if (target === undefined) {
         const out = bind(parse(source, program), prog => {
+            // console.log(prog.map(showDecl).join('\n\n'));
             return bind(interpret(prog), ([value, _type]) => {
                 return ok(showValue(value));
             });

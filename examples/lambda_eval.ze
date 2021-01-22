@@ -13,18 +13,18 @@ data Expr =
     Const Value |
     BinOp BinaryOperator Expr Expr |
     MonOp UnaryOperator Expr |
-    Var Int |
-    LetIn Int Expr Expr |
+    Var (List Char) |
+    LetIn (List Char) Expr Expr |
     If Expr Expr Expr |
-    Lambda Int Expr |
+    Lambda (List Char) Expr |
     App Expr Expr |
-    LetRecIn Int Int Expr Expr;
+    LetRecIn (List Char) (List Char) Expr Expr;
 
 data Value =
     IntVal Int |
     BoolVal Bool |
-    ClosureVal Int Expr (List (Int, Value)) |
-    ClosureRecVal Int Int Expr (List (Int, Value));
+    ClosureVal (List Char) Expr (List (List Char, Value)) |
+    ClosureRecVal (List Char) (List Char) Expr (List (List Char, Value));
 
 intOf (IntVal n) = n;
 boolOf (BoolVal q) = q;
@@ -88,22 +88,22 @@ eval (LetRecIn f x body e) env =
     let recVal = ClosureRecVal f x body env in
     eval e ((f, recVal)::env);
 
-fact n = intOf (eval (LetRecIn 1 0 (
-        If (BinOp Eq (Var 0) (Const (IntVal 0)))
+fact n = intOf (eval (LetRecIn "fact" "n" (
+        If (BinOp Eq (Var "n") (Const (IntVal 0)))
             (Const (IntVal 1))
-            (BinOp Times (Var 0) (App (Var 1) (BinOp Minus (Var 0) (Const (IntVal 1)))))
-    ) (App (Var 1) (Const (IntVal n)))) []);
+            (BinOp Times (Var "n") (App (Var "fact") (BinOp Minus (Var "n") (Const (IntVal 1)))))
+    ) (App (Var "fact") (Const (IntVal n)))) []);
 
-isPrime n = boolOf (eval (LetRecIn 9 0 (
-    Lambda 1 (
-        If (BinOp Leq (BinOp Times (Var 1) (Var 1)) (Var 0))
-            (If (BinOp Eq (BinOp Modulo (Var 0) (Var 1)) (Const (IntVal 0)))
+isPrime n = boolOf (eval (LetRecIn "isPrime" "n" (
+    Lambda "i" (
+        If (BinOp Leq (BinOp Times (Var "i") (Var "i")) (Var "n"))
+            (If (BinOp Eq (BinOp Modulo (Var "n") (Var "i")) (Const (IntVal 0)))
                 (Const (BoolVal False))
-                (App (App (Var 9) (Var 0)) (BinOp Plus (Var 1) (Const (IntVal 1))))
+                (App (App (Var "isPrime") (Var "n")) (BinOp Plus (Var "i") (Const (IntVal 1))))
             )
-            (BinOp Neq (Var 0) (Const (IntVal 1)))
+            (BinOp Neq (Var "n") (Const (IntVal 1)))
     )
-) (App (App (Var 9) (Const (IntVal n))) (Const (IntVal 2)))) []);
+) (App (App (Var "isPrime") (Const (IntVal n))) (Const (IntVal 2)))) []);
 
 listPrimes n = listPrimes' n [];
 

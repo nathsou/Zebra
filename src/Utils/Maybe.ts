@@ -34,3 +34,12 @@ export const bind = <A, B>(m: Maybe<A>, f: (val: A) => B): Maybe<B> => {
     if (isNone(m)) return None;
     return f(m);
 };
+
+export const mapOrDefault = <A, B>(
+    m: Maybe<A>,
+    f: (val: A) => B,
+    default_: B
+): B => {
+    if (isSome(m)) return f(m);
+    return default_;
+};

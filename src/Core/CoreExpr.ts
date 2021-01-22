@@ -47,11 +47,17 @@ export type CoreTyConstExpr = {
     args: CoreExpr[]
 };
 
-export type CoreConstantExpr = CoreIntegerExpr | CoreCharExpr;
+export type CoreConstantExpr = CoreIntegerExpr | CoreFloatExpr | CoreCharExpr;
 
 export type CoreIntegerExpr = {
     type: 'constant',
     kind: 'integer',
+    value: number
+};
+
+export type CoreFloatExpr = {
+    type: 'constant',
+    kind: 'float',
     value: number
 };
 

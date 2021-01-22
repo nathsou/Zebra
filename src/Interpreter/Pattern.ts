@@ -1,8 +1,8 @@
-import { intTy, charTy, tupleTy, uncurryFun } from "../Inferencer/FixedTypes.ts";
+import { charTy, floatTy, intTy, tupleTy, uncurryFun } from "../Inferencer/FixedTypes.ts";
 import { freshInstance, freshTyVar, MonoTy, polyTy, PolyTy, showMonoTy, TypeEnv } from "../Inferencer/Types.ts";
 import { substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "../Inferencer/Unification.ts";
 import { envGet, envHas } from "../Utils/Env.ts";
-import { isNone, Maybe, None } from "../Utils/Mabye.ts";
+import { isNone, Maybe, None } from "../Utils/Maybe.ts";
 import { bind, error, fold, ok, Result } from "../Utils/Result.ts";
 import { Value } from "./Value.ts";
 
@@ -119,6 +119,11 @@ export const collectPatternSubst = (
     // integers
     if (/[0-9]+/.test(p.name)) {
         return checkedUnify(tau, intTy, p);
+    }
+
+    // floats
+    if (/[0-9]*\.[0-9]+/.test(p.name)) {
+        return checkedUnify(tau, floatTy, p);
     }
 
     // characters

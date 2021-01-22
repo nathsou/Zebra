@@ -42,11 +42,17 @@ export type PrimTyConstExpr = {
     args: PrimExpr[]
 };
 
-export type PrimConstantExpr = PrimIntegerExpr | PrimCharExpr;
+export type PrimConstantExpr = PrimIntegerExpr | PrimFloatExpr | PrimCharExpr;
 
 export type PrimIntegerExpr = {
     type: 'constant',
     kind: 'integer',
+    value: number
+};
+
+export type PrimFloatExpr = {
+    type: 'constant',
+    kind: 'float',
     value: number
 };
 
@@ -81,6 +87,5 @@ export type PrimBinopExpr = {
 export type PrimSubtermOccurence = {
     type: 'subterm',
     index: number,
-    pos: number[],
-    argIndex: number
+    pos: number[]
 };

@@ -1,4 +1,4 @@
-import { isSome, Maybe, None } from "../Utils/Mabye.ts";
+import { isSome, Maybe, None } from "../Utils/Maybe.ts";
 import { bind, error, isError, isOk, mapResult, ok, Result } from "../Utils/Result.ts";
 import { lex, LexerError } from "./Lexer.ts";
 import { KeywordType, showPosition, showToken, Tok, Token, TokenType } from "./Token.ts";
@@ -187,15 +187,19 @@ export const symbol = <V extends string>(name: V): Parser<Tok<'symbol', { name: 
  * @param p the parser matching the value between the parentheses
  */
 export const parens = <T>(p: AnyParser<T>): Parser<T> => {
-    return map(seq(token('lparen'), seq(p, token('rparen'))), ([_l, [res, _r]]) => res);
+    return map(seq(token('lparen'), p, token('rparen')), ([_l, res, _r]) => res);
 };
+
+export const maybeParens = <T>(p: AnyParser<T>): Parser<T> => {
+    return alt(p, parens(p));
+}
 
 /**
  * parses a value surrounded by square brackets
  * @param p the parser matching the value between the square brackets
  */
 export const brackets = <T>(p: AnyParser<T>): Parser<T> => {
-    return map(seq(token('lbracket'), seq(p, token('rbracket'))), ([_l, [res, _r]]) => res);
+    return map(seq(token('lbracket'), p, token('rbracket')), ([_l, res, _r]) => res);
 };
 
 /**
@@ -208,7 +212,11 @@ export const commas = <T>(p: AnyParser<T>) => sepBy(p, 'comma');
  * parses a list of values separated by the given token type
  * @param p the parser matching separated values
  */
-export const sepBy = <T>(p: AnyParser<T>, separator: TokenType): Parser<T[]> => {
+export const sepBy = <T>(
+    p: AnyParser<T>,
+    separator: TokenType,
+    acceptTrailing = false
+): Parser<T[]> => {
     return state => {
         const values: T[] = [];
         let first = true;
@@ -223,7 +231,11 @@ export const sepBy = <T>(p: AnyParser<T>, separator: TokenType): Parser<T[]> => 
             const res = parserOf(p)(state);
 
             if (isError(res)) {
-                return res;
+                if (acceptTrailing && values.length > 0) {
+                    return ok(values);
+                } else {
+                    return res;
+                }
             } else {
                 values.push(res.value);
             }

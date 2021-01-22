@@ -1,6 +1,6 @@
 import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
 import { vars } from "../Interpreter/Pattern.ts";
-import { DataTypeDecl } from "../Parser/Decl.ts";
+import { TypeDecl } from "../Parser/Decl.ts";
 import { appOf, lambdaOf } from "../Parser/Sugar.ts";
 import { decons, deepCopy, partition } from "../Utils/Common.ts";
 import { coreOf } from "./Casify.ts";
@@ -18,10 +18,10 @@ type Dependencies = Graph<string>;
 export const singleExprProgOf = (prog: CoreDecl[]): SingleExprProg => {
     const [
         funDecls,
-        dataTypeDecls
-    ] = partition(prog, d => d.type === 'fun') as [CoreFuncDecl[], DataTypeDecl[]];
+        typeDecls
+    ] = partition(prog, d => d.type === 'fun') as [CoreFuncDecl[], TypeDecl[]];
 
-    const deps = funcDeclsDependencies(funDecls, dataTypeDecls);
+    const deps = funcDeclsDependencies(funDecls, typeDecls);
     const mutuallyRec = mutuallyRecursiveFuncs(deps);
 
     const funs = new Map<string, CoreFuncDecl>();
@@ -83,7 +83,7 @@ export const singleExprProgOf = (prog: CoreDecl[]): SingleExprProg => {
         .map(f => funs.get(f) as CoreFuncDecl);
 
     return {
-        datatypes: dataTypeDecls,
+        typeDecls,
         main: exprOfFunDeclsAux(reordered, mutuallyRecPartialFuncs)
     };
 };
@@ -355,9 +355,9 @@ const mutuallyRecursiveFuncs = (deps: Dependencies): Graph<string> => {
 
 export const funcDeclsDependencies = (
     funDecls: CoreFuncDecl[],
-    dataTypeDecls: DataTypeDecl[]
+    typeDecls: TypeDecl[]
 ): Dependencies => {
-    const env = varEnvOf(...dataTypeVariants(dataTypeDecls));
+    const env = varEnvOf(...dataTypeVariants(typeDecls));
 
     const deps = new Map<string, Set<string>>();
 
@@ -369,12 +369,14 @@ export const funcDeclsDependencies = (
     return deps;
 };
 
-const dataTypeVariants = (typeDecls: DataTypeDecl[]): string[] => {
+const dataTypeVariants = (typeDecls: TypeDecl[]): string[] => {
     const variants: string[] = [];
 
     for (const dt of typeDecls) {
-        for (const variant of dt.variants) {
-            variants.push(variant.name);
+        if (dt.type === 'datatype') {
+            for (const variant of dt.variants) {
+                variants.push(variant.name);
+            }
         }
     }
 

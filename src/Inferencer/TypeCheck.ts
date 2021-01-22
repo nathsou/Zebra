@@ -2,9 +2,9 @@ import { casifyFunctionDeclarations } from "../Core/Casify.ts";
 import { CoreDecl, CoreFuncDecl, SingleExprProg } from "../Core/CoreDecl.ts";
 import { singleExprProgOf } from "../Core/ExprOfFunDecls.ts";
 import { Decl } from "../Parser/Decl.ts";
-import { isNone, Maybe } from "../Utils/Mabye.ts";
+import { isNone, Maybe } from "../Utils/Maybe.ts";
 import { bind, error, ok, Result } from "../Utils/Result.ts";
-import { inferExprType, registerDataTypes } from "./Inferencer.ts";
+import { inferExprType, registerTypeDecls } from "./Inferencer.ts";
 import { canonicalizeTyVars, MonoTy } from "./Types.ts";
 
 export const typeCheck = (prog: Decl[]): Result<{
@@ -24,7 +24,7 @@ export const typeCheck = (prog: Decl[]): Result<{
 
     const singleExprProg = singleExprProgOf(coreProg);
 
-    const gamma = registerDataTypes(singleExprProg.datatypes);
+    const gamma = registerTypeDecls(singleExprProg.typeDecls);
 
     return bind(inferExprType(singleExprProg.main, gamma), ty => {
         return ok({ ty: canonicalizeTyVars(ty), main, coreProg, singleExprProg });

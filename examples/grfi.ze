@@ -13,6 +13,10 @@ trs = [
     (Fun "Add" [Fun "0" [], Var "b"], Var "b"),
     (Fun "Add" [Fun "S" [Var "a"], Var "b"], Fun "S" [Fun "Add" [Var "a", Var "b"]]),
     (Fun "Add" [Var "a", Fun "S" [Var "b"]], Fun "S" [Fun "Add" [Var "a", Var "b"]]),
+    (Fun "Mult" [Var "a", Fun "0" []], Fun "0" []),
+    (Fun "Mult" [Fun "0" [], Var "b"], Fun "0" []),
+    (Fun "Mult" [Fun "S" [Var "a"], Var "b"], Fun "Add" [Fun "Mult" [Var "a", Var "b"], Var "b"]),
+    (Fun "Mult" [Var "a", Fun "S" [Var "b"]], Fun "Add" [Fun "Mult" [Var "a", Var "b"], Var "a"]),
     (Fun "1" [], Fun "S" [Fun "0" []]),
     (Fun "2" [], Fun "S" [Fun "1" []]),
     (Fun "3" [], Fun "S" [Fun "2" []]),
@@ -102,4 +106,4 @@ normalize term rules = normalize' (term, True) rules;
 normalize' (t, True) rules = normalize' (reduce t rules) rules;
 normalize' (t, False) rules = t;
 
-main = normalize (Fun "Range" [Fun "10" []]) trs;
+main = show (normalize (Fun "Range" [Fun "Mult" [Fun "10" [], Fun "10" []]]) trs);

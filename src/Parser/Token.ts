@@ -1,9 +1,11 @@
+
 export type Token =
     | Punctuation
     | Symbol
     | Identifier
     | Variable
     | Integer
+    | Float
     | Char
     | String
     | Keyword
@@ -12,7 +14,7 @@ export type Token =
 
 export type TokenType =
     Punctuation['type'] | 'symbol' | 'keyword' | 'variable' |
-    'identifier' | 'integer' | 'char' | 'string' | 'comment' | 'EOF';
+    'identifier' | 'integer' | 'float' | 'char' | 'string' | 'comment' | 'EOF';
 
 export type Punctuation =
     | Tok<'lparen'>
@@ -25,6 +27,8 @@ export type Punctuation =
     | Tok<'dot'>
     | Tok<'semicolon'>
     | Tok<'cons'>
+    | Tok<'colon'>
+    | Tok<'bigarrow'>
     | Tok<'pipe'>;
 
 export type Position = {
@@ -51,6 +55,10 @@ type Integer = Tok<'integer', {
     value: number
 }>;
 
+type Float = Tok<'float', {
+    value: number
+}>;
+
 type Char = Tok<'char', {
     value: string
 }>;
@@ -65,7 +73,7 @@ type Comment = Tok<'comment', {
 
 export type KeywordType =
     'let' | 'rec' | 'in' | 'if' | 'then' |
-    'else' | 'data' | 'case' | 'of';
+    'else' | 'data' | 'case' | 'of' | 'class' | 'instance' | 'where';
 
 type Keyword = Tok<'keyword', {
     value: KeywordType
@@ -84,7 +92,9 @@ const tokenSymbs = {
     'lambda': '\\',
     'rightarrow': '->',
     'cons': '::',
-    'semicolon': ';'
+    'semicolon': ';',
+    'colon': ':',
+    'bigarrow': '=>'
 };
 
 export const showToken = (t: Token): string => {
@@ -104,6 +114,8 @@ export const showToken = (t: Token): string => {
             return t.value.toString();
         case 'char':
             return `'${t.value}'`;
+        case 'float':
+            return t.value.toString();
         case 'string':
             return `"${t.value}"`;
         default:

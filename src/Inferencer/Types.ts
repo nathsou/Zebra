@@ -1,14 +1,20 @@
 import { freeVarsEnv, freeVarsMonoTy, substituteMono, substOf } from "./Unification.ts";
 
-// the type of monomortphic types
+// the type of monomorphic types
 export type MonoTy = TyVar | TyConst;
 
 // type variables are represented by integers
 export type TyVar = number;
+// export type TyVar = { value: number, context: TyClass[] };
 
 export type TyConst = {
     name: string,
     args: MonoTy[]
+};
+
+export type TyClass = {
+    name: string,
+    tyVars: TyVar[]
 };
 
 // constructors

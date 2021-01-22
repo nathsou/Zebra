@@ -1,11 +1,13 @@
-import { assert } from "https://deno.land/std@0.73.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
 import { TyConstVal as ValTyConst } from "../Interpreter/Value.ts";
 import { ConstantExpr } from "../Parser/Expr.ts";
 import { gen } from "../Utils/Common.ts";
-import { Maybe, None } from "../Utils/Mabye.ts";
+import { Maybe, None } from "../Utils/Maybe.ts";
 import { freshTyVar, isTyConst, MonoTy, PolyTy, polyTy, tyConst, tyVar } from "./Types.ts";
 
+// primitive types
 export const intTy = tyConst('Int');
+export const floatTy = tyConst('Float');
 export const boolTy = tyConst('Bool');
 export const charTy = tyConst('Char');
 export const unitTy = tyConst('()');
@@ -50,13 +52,15 @@ const intBoolOpTy = funTy(intTy, intTy, boolTy);
 
 export const tupleTy = (n: number): PolyTy => {
     const tys = gen(n, () => freshTyVar());
-    return { polyVars: tys, ty: funTy(...tys, tyConst('tuple', ...tys)) };
+    return polyTy(funTy(...tys, tyConst('tuple', ...tys)), ...tys);
 };
 
 export const constantTy = (c: ConstantExpr): PolyTy => {
     switch (c.kind) {
         case 'integer':
             return polyTy(intTy);
+        case 'float':
+            return polyTy(floatTy);
         case 'char':
             return polyTy(charTy);
     }

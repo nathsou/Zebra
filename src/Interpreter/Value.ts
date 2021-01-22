@@ -8,9 +8,11 @@ export type ValEnv = Env<Value>;
 
 export type Value = ConstantVal | ClosureVal | TyConstVal | RecVarVal;
 
-export type ConstantVal = IntegerVal | CharVal;
+export type ConstantVal = IntegerVal | FloatVal | CharVal;
 
 export type IntegerVal = { type: 'int', value: number };
+
+export type FloatVal = { type: 'float', value: number };
 
 export type CharVal = { type: 'char', value: string };
 
@@ -42,6 +44,8 @@ export const valuesEq = (a: Value, b: Value): boolean => {
     switch (a.type) {
         case 'int':
             return a.value === (b as IntegerVal).value;
+        case 'float':
+            return a.value === (b as FloatVal).value;
         case 'char':
             return a.value === (b as CharVal).value;
         case 'closure':
@@ -66,13 +70,13 @@ export type ValueTypeMap = {
 export const showValue = (val: Value): string => {
     switch (val.type) {
         case 'int':
-            return val.value.toString();
+        case 'float':
+            return `${val.value}`;
         case 'char':
             return `'${val.value}'`;
         case 'closure':
             return `λ${showPattern(val.arg)} -> ${showExpr(val.body)}`;
         case 'tyconst':
-
             switch (val.name) {
                 case 'tuple':
                     return `(${val.args.map(showValue).join(', ')})`;

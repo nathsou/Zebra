@@ -1,9 +1,8 @@
-import { assert } from "https://deno.land/std@0.73.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
 import { isVar } from "../Interpreter/Pattern.ts";
 import { Decl, FuncDecl } from "../Parser/Decl.ts";
 import { CaseOfExpr, Expr } from "../Parser/Expr.ts";
-import { renameVars } from "../Parser/RenameVars.ts";
-import { gen, zipObject } from "../Utils/Common.ts";
+import { gen } from "../Utils/Common.ts";
 import { CoreDecl, CoreFuncDecl } from "./CoreDecl.ts";
 import { CoreCaseOfExpr, CoreExpr, CoreTyConstExpr } from "./CoreExpr.ts";
 
@@ -212,7 +211,7 @@ const tupleOf = (vals: CoreExpr[]): CoreTyConstExpr => {
     };
 };
 
-const casify = (name: string, funs: FuncDecl[]): FuncDecl => {
+export const casify = (name: string, funs: FuncDecl[]): FuncDecl => {
     if (funs.length === 1) return funs[0];
 
     const arity = funs[0].args.length;
@@ -248,7 +247,7 @@ const casify = (name: string, funs: FuncDecl[]): FuncDecl => {
     };
 };
 
-const groupByHead = (funs: FuncDecl[]): Map<string, FuncDecl[]> => {
+export const groupByHead = (funs: FuncDecl[]): Map<string, FuncDecl[]> => {
     const grouped = new Map<string, FuncDecl[]>();
 
     for (const f of funs) {

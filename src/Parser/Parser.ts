@@ -1,9 +1,14 @@
-import { MonoTy, TyConst, tyConst, typeVarNamer, TyVar } from "../Inferencer/Types.ts";
+import { casify, groupByHead } from "../Core/Casify.ts";
+import { funTy } from "../Inferencer/FixedTypes.ts";
+import { MonoTy, PolyTy, polyTy, TyClass, TyConst, tyConst, typeVarNamer, TyVar } from "../Inferencer/Types.ts";
+import { freeVarsMonoTy } from "../Inferencer/Unification.ts";
 import { Pattern } from "../Interpreter/Pattern.ts";
+import { mapValues } from "../Utils/Common.ts";
+import { mapOrDefault } from "../Utils/Maybe.ts";
 import { error } from "../Utils/Result.ts";
-import { alt, brackets, commas, keyword, leftassoc, many, map, oneOf, optional, parens, Parser, ParserRef, sepBy, seq, some, symbol, token } from "./Combinators.ts";
-import { Decl } from "./Decl.ts";
-import { CaseOfExpr, CaseOfExprCase, CharExpr, ConstantExpr, Expr, IntegerExpr, TyConstExpr, VarExpr } from "./Expr.ts";
+import { alt, brackets, commas, keyword, leftassoc, many, map, maybeParens, oneOf, optional, parens, Parser, ParserRef, sepBy, seq, some, symbol, token } from "./Combinators.ts";
+import { Decl, FuncDecl } from "./Decl.ts";
+import { CaseOfExpr, CaseOfExprCase, CharExpr, ConstantExpr, Expr, FloatExpr, IntegerExpr, TyConstExpr, VarExpr } from "./Expr.ts";
 import { lambdaOf, listOf } from "./Sugar.ts";
 
 // https://www.haskell.org/onlinereport/syntax-iso.html
@@ -24,7 +29,11 @@ const charOf = (c: string): CharExpr => ({ type: 'constant', kind: 'char', value
 
 const char: Parser<CharExpr> = map(token('char'), ({ value: c }) => charOf(c));
 
-const constant: Parser<ConstantExpr> = oneOf(integer, char);
+const float: Parser<FloatExpr> = map(token('float'), ({ value }) => ({
+    type: 'constant', kind: 'float', value
+}));
+
+const constant: Parser<ConstantExpr> = oneOf(integer, char, float);
 
 const string: Parser<Expr> = map(token('string'), ({ value }) =>
     listOf(value.split('').map(charOf)));
@@ -130,9 +139,11 @@ expr.ref = lambda;
 
 // declarations
 
+// function declarations
+
 const funDecl: Parser<Decl> = map(
-    seq(token('variable'), some(pattern), symbol('='), expr, token('semicolon')),
-    ([f, args, _eq, body, _semi]) => ({
+    seq(token('variable'), some(pattern), symbol('='), expr),
+    ([f, args, _eq, body]) => ({
         type: 'fun',
         name: f.name,
         args,
@@ -144,9 +155,9 @@ const tyVarNames = typeVarNamer();
 
 const typeVar: Parser<TyVar> = map(token('variable'), ({ name }) => tyVarNames(name));
 
-const unitTy = map(seq(token('lparen'), token('rparen')), () => tyConst('unit'));
-
 let type: ParserRef<MonoTy> = dummyBeforeInit();
+
+const unitTy = map(seq(token('lparen'), token('rparen')), () => tyConst('unit'));
 
 const tupleTy = alt(map(
     seq(token('lparen'), type, token('comma'), commas(type), token('rparen')),
@@ -154,18 +165,25 @@ const tupleTy = alt(map(
 ), unitTy);
 
 const typeConst: Parser<TyConst> = map(
-    seq(token('identifier'),
+    maybeParens(seq(token('identifier'),
         some(alt<MonoTy>(
             map(token('identifier'), ({ name }) => tyConst(name)),
             typeVar,
             tupleTy,
             parens(type)
         ))
-    ),
+    )),
     ([f, args]) => tyConst(f.name, ...args)
 );
 
-type.ref = oneOf(typeVar, typeConst);
+const funType: Parser<MonoTy> = map(
+    sepBy(oneOf(typeVar, typeConst), 'rightarrow'),
+    tys => tys.length > 1 ? funTy(...tys) : tys[0]
+);
+
+type.ref = maybeParens(funType);
+
+// datatype declarations
 
 const dataTypeDecl: Parser<Decl> = alt(map(
     seq(
@@ -174,10 +192,9 @@ const dataTypeDecl: Parser<Decl> = alt(map(
         some(token('variable')),
         symbol('='),
         optional(token('pipe')),
-        sepBy(typeConst, 'pipe'),
-        token('semicolon')
+        sepBy(typeConst, 'pipe')
     ),
-    ([_dt, f, typeVars, _eq, _, variants, _semi]) => ({
+    ([_dt, f, typeVars, _eq, _, variants]) => ({
         type: 'datatype',
         typeVars: typeVars.map(tv => tyVarNames(tv.name)),
         name: f.name,
@@ -185,9 +202,63 @@ const dataTypeDecl: Parser<Decl> = alt(map(
     })
 ), funDecl);
 
-export const decl: Parser<Decl> = dataTypeDecl;
+// type class declarations
 
-export const program: Parser<Decl[]> = some(decl);
+const context: Parser<TyClass[]> = map(
+    parens(commas(seq(token('identifier'), many(typeVar)))),
+    constraints => constraints.map(([{ name }, tyVars]) => ({ name, tyVars }))
+);
+
+const typeAnnotation: Parser<[string, PolyTy]> = map(
+    seq(token('variable'), token('colon'), type),
+    ([{ name }, _, ty]) => [name, polyTy(ty, ...freeVarsMonoTy(ty))]
+);
+
+const typeClassDecl: Parser<Decl> = alt(map(
+    seq(
+        keyword("class"),
+        optional(seq(context, token('bigarrow'))),
+        token('identifier'),
+        typeVar,
+        keyword('where'),
+        sepBy(typeAnnotation, 'comma')
+    ),
+    ([_cl, ctx, { name }, tyVar, _where, methods]) => ({
+        type: 'typeclass',
+        context: mapOrDefault(ctx, ([classes]) => classes, []),
+        name,
+        tyVars: [tyVar],
+        methods: new Map(methods)
+    })
+), dataTypeDecl);
+
+// type class instance delcarations
+
+const instanceDecl: Parser<Decl> = alt(map(
+    seq(
+        keyword("instance"),
+        optional(seq(context, token('bigarrow'))),
+        token('identifier'),
+        type,
+        keyword('where'),
+        sepBy(funDecl, 'comma')
+    ),
+    ([_inst, ctx, { name }, ty, _where, defs]) => ({
+        type: 'instance',
+        context: mapOrDefault(ctx, ([classes]) => classes, []),
+        name,
+        ty,
+        defs: mapValues(
+            groupByHead(defs as FuncDecl[]),
+            (decls, f) => casify(f, decls)
+        )
+    })
+), typeClassDecl);
+
+export const decl: Parser<Decl> = instanceDecl;
+
+export const program: Parser<Decl[]> = sepBy(decl, 'semicolon', true);
+
 
 // patterns
 
@@ -209,6 +280,7 @@ const charPatOf = (c: string): Pattern => ({
 const constantPat: Parser<Pattern> = alt(map(constant, c => {
     switch (c.kind) {
         case 'integer':
+        case 'float':
             return { name: `${c.value}`, args: [] };
         case 'char':
             return charPatOf(c.value);

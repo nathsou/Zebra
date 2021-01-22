@@ -1,8 +1,28 @@
-data Hello a = Hey a;
 
-test n (Hey x) = 
-    case n of
-        | 1 -> x
-        | 2 -> 2 * x;
+data Bool = True | False;
+data List a = Nil | Cons a (List a);
 
-main = test 1 (Hey 21);
+class Eq a where
+    eq : a -> a -> Bool,
+    neq : a -> a -> Bool;
+
+class Show a where
+    show : a -> List Char;
+
+not False = True;
+not True = False;
+
+instance Eq Int where
+    eq x y = x == y,
+    neq x y = not (x == y);
+
+instance (Eq a) => Eq (List a) where
+    eq [] [] = True,
+    eq a::as b::bs = if eq a b then eq as bs else False,
+    eq _ _ = False,
+    neq as bs = not (eq as bs);
+
+elem _ [] = False;
+elem x y::ys = if x == y then True else elem x ys;
+
+main = elem 3 [1, 2, 3, 4, 5, 6, 7, 8, 9];

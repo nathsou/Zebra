@@ -159,3 +159,13 @@ export const zipObject = <T>(keys: string[], values: T[]): { [key: string]: T } 
 
     return obj;
 };
+
+export const mapValues = <K, V, U>(m: Map<K, V>, f: (v: V, k: K) => U): Map<K, U> => {
+    const m2 = new Map<K, U>();
+
+    for (const [k, v] of m) {
+        m2.set(k, f(v, k));
+    }
+
+    return m2;
+};
