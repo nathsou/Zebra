@@ -1,8 +1,9 @@
 import { charTy, floatTy, intTy, tupleTy, uncurryFun } from "../Inferencer/FixedTypes.ts";
+import { typeDeclContext } from "../Inferencer/TypeDeclContext.ts";
 import { freshInstance, freshTyVar, MonoTy, polyTy, PolyTy, showMonoTy, TypeEnv } from "../Inferencer/Types.ts";
 import { substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "../Inferencer/Unification.ts";
-import { envGet, envHas } from "../Utils/Env.ts";
-import { isNone, Maybe, None } from "../Utils/Maybe.ts";
+import { defined } from "../Utils/Common.ts";
+import { Maybe, None } from "../Utils/Maybe.ts";
 import { bind, error, fold, isError, ok, Result } from "../Utils/Result.ts";
 import { Value } from "./Value.ts";
 
@@ -40,7 +41,7 @@ const unifyPatternMany = (eqs: Array<[Pattern, Value]>): Maybe<ValSubst> => {
     const sig: ValSubst = {};
 
     while (eqs.length > 0) {
-        const [p, v] = eqs.pop() as [Pattern, Value];
+        const [p, v] = defined(eqs.pop());
 
 
         if (isVar(p)) { // Eliminate
@@ -84,10 +85,9 @@ const unifyPatternMany = (eqs: Array<[Pattern, Value]>): Maybe<ValSubst> => {
 export const checkedUnify = (
     s: MonoTy,
     t: MonoTy,
-    p: Pattern,
-    instances: Map<string, string[]>
+    p: Pattern
 ): Result<TypeSubst, string> => {
-    const sig = unify(s, t, instances);
+    const sig = unify(s, t);
 
     if (isError(sig)) {
         return error(`${sig.value} : cannot unify ${showMonoTy(s)} with ${showMonoTy(t)} in pattern "${showPattern(p)}"`);
@@ -100,69 +100,64 @@ export const collectPatternSubst = (
     env: TypeEnv,
     p: Pattern,
     tau: MonoTy,
-    vars: Record<string, PolyTy>,
-    instances: Map<string, string[]>
+    vars: Record<string, PolyTy>
 ): Result<TypeSubst, string> => {
-
-    const unif = (s: MonoTy, t: MonoTy, pat: Pattern) =>
-        checkedUnify(s, t, pat, instances);
-
-    // TODO: clean up
     if (isVar(p)) {
         // if this is a datatype variant
-        if ((p[0] === p[0].toUpperCase()) && envHas(env, p)) {
-            return bind(freshInstance(envGet(env, p), instances), freshTy => {
-                return unif(tau, freshTy, p);
+        if (typeDeclContext.datatypes.has(p)) {
+            const variantTy = defined(typeDeclContext.datatypes.get(p));
+            return bind(freshInstance(variantTy), freshTy => {
+                return checkedUnify(tau, freshTy, p);
             });
         } else if (vars[p] !== undefined) {
-            return bind(freshInstance(vars[p], instances), freshTy => {
-                return unif(tau, freshTy, p);
+            return bind(freshInstance(vars[p]), freshTy => {
+                return checkedUnify(tau, freshTy, p);
             });
         } else {
             const ty = freshTyVar();
             vars[p] = polyTy(ty);
-            return unif(tau, ty, p);
+            return checkedUnify(tau, ty, p);
         }
     }
 
     if (p.name === '_') {
-        return unif(tau, freshTyVar(), p);
+        return checkedUnify(tau, freshTyVar(), p);
     }
 
     // integers
     if (/[0-9]+/.test(p.name)) {
-        return unif(tau, intTy, p);
+        return checkedUnify(tau, intTy, p);
     }
 
     // floats
     if (/[0-9]*\.[0-9]+/.test(p.name)) {
-        return unif(tau, floatTy, p);
+        return checkedUnify(tau, floatTy, p);
     }
 
     // characters
     if (p.name[0] === "'") {
-        return unif(tau, charTy, p);
+        return checkedUnify(tau, charTy, p);
+    }
+
+    if (p.name !== 'tuple' && !typeDeclContext.datatypes.has(p.name)) {
+        return error(`unknown variant: ${p.name} in pattern "${showPattern(p)}"`);
     }
 
     const constructorTy = p.name === 'tuple' ?
         tupleTy(p.args.length) :
-        envGet(env, p.name);
+        defined(typeDeclContext.datatypes.get(p.name));
 
-    if (isNone(constructorTy)) {
-        return error(`unknown variant: ${p.name} in pattern "${showPattern(p)}"`);
-    }
-
-    const freshCtorTy = freshInstance(constructorTy, instances);
+    const freshCtorTy = freshInstance(constructorTy);
     if (isError(freshCtorTy)) return freshCtorTy;
 
     const tys = uncurryFun(freshCtorTy.value);
-    const retTy = tys.pop() as MonoTy;
+    const retTy = defined(tys.pop());
 
     const res = fold(tys, ([sig_i, gamma_i], tau_i, i) => {
-        return bind(substituteMono(tau_i, sig_i, instances), sig_i_tau_i => {
-            return bind(collectPatternSubst(gamma_i, p.args[i], sig_i_tau_i, vars, instances), sig => {
-                return bind(substituteEnv(gamma_i, sig, instances), gamma_n => {
-                    return bind(substCompose(instances, sig, sig_i), sig_n => {
+        return bind(substituteMono(tau_i, sig_i), sig_i_tau_i => {
+            return bind(collectPatternSubst(gamma_i, p.args[i], sig_i_tau_i, vars), sig => {
+                return bind(substituteEnv(gamma_i, sig), gamma_n => {
+                    return bind(substCompose(sig, sig_i), sig_n => {
                         return ok([sig_n, gamma_n] as const);
                     });
                 });
@@ -171,10 +166,10 @@ export const collectPatternSubst = (
     }, [{} as TypeSubst, env] as const);
 
     return bind(res, ([sig_n]) => {
-        return bind(substituteMono(retTy, sig_n, instances), s => {
-            return bind(substituteMono(tau, sig_n, instances), t => {
-                return bind(unif(s, t, p), sig2 => {
-                    return substCompose(instances, sig2, sig_n);
+        return bind(substituteMono(retTy, sig_n), s => {
+            return bind(substituteMono(tau, sig_n), t => {
+                return bind(checkedUnify(s, t, p), sig2 => {
+                    return substCompose(sig2, sig_n);
                 });
             });
         });

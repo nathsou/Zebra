@@ -1,13 +1,14 @@
-import { assert } from "https://deno.land/std@0.73.0/testing/asserts.ts";
-import { casifyFunctionDeclarations, coreOf } from "../src/Core/Simplifier.ts";
+import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
+import { casifyFunctionDeclarations, coreOf } from "../src/Core/Casify.ts";
+import { singleExprProgOf } from "../src/Core/ExprOfFunDecls.ts";
 import { boolTy, funTy, intTy } from "../src/Inferencer/FixedTypes.ts";
-import { inferExprType, registerDeclTypes } from "../src/Inferencer/Inferencer.ts";
+import { inferExprType, registerTypeDecls } from "../src/Inferencer/Inferencer.ts";
 import { MonoTy, polyTy, showMonoTy, tyConst, TypeEnv, tyVar } from "../src/Inferencer/Types.ts";
 import { unify } from "../src/Inferencer/Unification.ts";
 import { parse } from "../src/Parser/Combinators.ts";
 import { FuncDecl } from "../src/Parser/Decl.ts";
 import { expr, program } from "../src/Parser/Parser.ts";
-import { isSome, Maybe } from "../src/Utils/Mabye.ts";
+import { isSome, Maybe } from "../src/Utils/Maybe.ts";
 import { bind, isError, ok } from "../src/Utils/Result.ts";
 
 const gamma: TypeEnv = {
@@ -35,17 +36,18 @@ const assertType = (exp: string, ty: MonoTy): void => {
 const assertMainType = (prog: string, ty: MonoTy): void => {
     const res = bind(parse(prog, program), decls => {
 
-        const prog = casifyFunctionDeclarations(decls);
+        const coreProg = casifyFunctionDeclarations(decls);
+        const prog = singleExprProgOf(coreProg);
 
         const main = decls.find(f => f.type === 'fun' && f.name === 'main') as Maybe<FuncDecl>;
 
         assert(isSome(main));
 
-        return bind(registerDeclTypes(prog), gamma => {
-            return bind(inferExprType(coreOf(main.body), gamma), tau => {
-                assertSameTypes(tau, ty);
-                return ok('');
-            });
+        const gamma = registerTypeDecls(prog.typeDecls);
+
+        return bind(inferExprType(coreOf(main.body), gamma), tau => {
+            assertSameTypes(tau, ty);
+            return ok('');
         });
     });
 

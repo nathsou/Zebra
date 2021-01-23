@@ -37,7 +37,7 @@ const reducePatternMatchingToCaseOf = (fun: FuncDecl): CoreFuncDecl => {
         return {
             type: 'fun',
             name: fun.name,
-            args: fun.args as string[],
+            args: fun.args,
             body: coreOf(fun.body)
         };
     } else {

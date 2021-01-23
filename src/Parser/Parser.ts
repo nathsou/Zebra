@@ -246,7 +246,7 @@ const typeClassDeclOf = (
             }
 
             const resTy = polyTy(
-                okOrThrow(substituteMono(ty.ty, sig, new Map())),
+                okOrThrow(substituteMono(ty.ty, sig)),
                 ...ty.polyVars
             );
 

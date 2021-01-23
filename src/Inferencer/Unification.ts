@@ -1,21 +1,22 @@
+import { defined } from "../Utils/Common.ts";
 import { envMapRes } from "../Utils/Env.ts";
 import { bind, error, isError, ok, reduceResult, Result } from "../Utils/Result.ts";
+import { typeDeclContext } from "./TypeDeclContext.ts";
 import { isTyVar, MonoTy, monoTypesEq, polyTy, PolyTy, showMonoTy, showTyVar, TyConst, tyConst, TypeEnv, tyVar, TyVar } from "./Types.ts";
 
 export type TypeSubst = Record<TyVar['value'], MonoTy>;
 
 export const unify = (
     s: MonoTy,
-    t: MonoTy,
-    instances: Map<string, string[]>
+    t: MonoTy
 ): Result<TypeSubst, string> => {
-    return unifyMany([[s, t]], instances);
+    return unifyMany([[s, t]]);
 };
 
+// https://www.researchgate.net/publication/2683816_Implementing_Type_Classes
 const propagateClasses = (
     classes: string[],
-    ty: MonoTy,
-    instances: Map<string, string[]>
+    ty: MonoTy
 ): Result<0, string> => {
     if (isTyVar(ty)) {
         for (const k of classes) {
@@ -25,7 +26,7 @@ const propagateClasses = (
         }
     } else {
         for (const k of classes) {
-            const res = propagateClassTyConst(k, ty, instances);
+            const res = propagateClassTyConst(k, ty);
             if (isError(res)) return res;
         }
     }
@@ -35,14 +36,13 @@ const propagateClasses = (
 
 const propagateClassTyConst = (
     class_: string,
-    ty: TyConst,
-    instances: Map<string, string[]>
+    ty: TyConst
 ): Result<0, string> => {
-    const res = findInstanceContext(ty.name, class_, instances);
+    const res = findInstanceContext(ty.name, class_);
     if (isError(res)) return res;
 
     for (const arg of ty.args) {
-        propagateClasses([class_], arg, instances);
+        propagateClasses([class_], arg);
     }
 
     return ok(0);
@@ -50,10 +50,11 @@ const propagateClassTyConst = (
 
 const findInstanceContext = (
     ctor: string,
-    class_: string,
-    instances: Map<string, string[]>
+    class_: string
 ): Result<0, string> => {
     // console.log(`looking for an instance of ${class_} with ${ctor}`);
+
+    const { instances } = typeDeclContext;
 
     if (!instances.get(class_)?.includes(ctor)) {
         return error(`no instance of class ${class_} found for ${ctor}`);
@@ -62,16 +63,16 @@ const findInstanceContext = (
     return ok(0);
 };
 
-export function substituteMono(x: TyVar, sig: TypeSubst, instances: Map<string, string[]>, excluded?: TyVar['value'][]): Result<MonoTy, string>;
-export function substituteMono(t: TyConst, sig: TypeSubst, instances: Map<string, string[]>, excluded?: TyVar['value'][]): Result<TyConst, string>;
-export function substituteMono(m: MonoTy, sig: TypeSubst, instances: Map<string, string[]>, excluded?: TyVar['value'][]): Result<MonoTy, string>;
-export function substituteMono(m: MonoTy, sig: TypeSubst, instances: Map<string, string[]>, excluded: TyVar['value'][] = []): Result<MonoTy, string> {
+export function substituteMono(x: TyVar, sig: TypeSubst, excluded?: TyVar['value'][]): Result<MonoTy, string>;
+export function substituteMono(t: TyConst, sig: TypeSubst, excluded?: TyVar['value'][]): Result<TyConst, string>;
+export function substituteMono(m: MonoTy, sig: TypeSubst, excluded?: TyVar['value'][]): Result<MonoTy, string>;
+export function substituteMono(m: MonoTy, sig: TypeSubst, excluded: TyVar['value'][] = []): Result<MonoTy, string> {
     if (isTyVar(m)) {
         if (sig[m.value] !== undefined && !excluded.includes(m.value)) {
             if (sig[m.value] === m) return ok({ ...m });
 
-            return bind(substituteMono(sig[m.value], sig, instances, excluded), ty => {
-                const res = propagateClasses(m.context, ty, instances);
+            return bind(substituteMono(sig[m.value], sig, excluded), ty => {
+                const res = propagateClasses(m.context, ty);
                 if (isError(res)) return res;
 
                 return ok(ty);
@@ -83,7 +84,7 @@ export function substituteMono(m: MonoTy, sig: TypeSubst, instances: Map<string,
     }
 
     return bind(reduceResult(
-        m.args.map(t => substituteMono(t, sig, instances, excluded))
+        m.args.map(t => substituteMono(t, sig, excluded))
     ), args => ok(tyConst(m.name, ...args)));
 }
 
@@ -129,31 +130,28 @@ const renameTyVars = (ty: MonoTy, rename: (x: TyVar) => TyVar): MonoTy => {
 
 export function substitutePoly(
     t: PolyTy,
-    sig: TypeSubst,
-    instances: Map<string, string[]>
+    sig: TypeSubst
 ): Result<PolyTy, string> {
-    return bind(substituteMono(t.ty, sig, instances, t.polyVars), ty => {
+    return bind(substituteMono(t.ty, sig, t.polyVars), ty => {
         return ok(polyTy(ty, ...t.polyVars));
     });
 }
 
 export const substituteEnv = (
     env: TypeEnv,
-    sig: TypeSubst,
-    instances: Map<string, string[]>
+    sig: TypeSubst
 ): Result<TypeEnv, string> => {
-    return envMapRes(env, t => substitutePoly(t, sig, instances));
+    return envMapRes(env, t => substitutePoly(t, sig));
 };
 
 export const substCompose = (
-    instances: Map<string, string[]>,
     sig1: TypeSubst,
     ...sigs: TypeSubst[]
 ): Result<TypeSubst, string> => {
     let sig: TypeSubst = { ...sig1 };
 
     for (const sig2 of sigs) {
-        const res = substComposeBin(sig, sig2, instances);
+        const res = substComposeBin(sig, sig2);
         if (isError(res)) return res;
         sig = res.value;
     }
@@ -163,13 +161,12 @@ export const substCompose = (
 
 const substComposeBin = (
     sig1: TypeSubst,
-    sig2: TypeSubst,
-    instances: Map<string, string[]>
+    sig2: TypeSubst
 ): Result<TypeSubst, string> => {
     const sig: Record<string, MonoTy> = {};
 
     for (const [x, t] of Object.entries(sig1)) {
-        const res = substituteMono(t, sig2, instances);
+        const res = substituteMono(t, sig2);
         if (isError(res)) return res;
 
         sig[x] = res.value;
@@ -188,13 +185,12 @@ const occurs = (x: TyVar, t: MonoTy): boolean => {
 };
 
 const unifyMany = (
-    eqs: Array<[MonoTy, MonoTy]>,
-    instances: Map<string, string[]>
+    eqs: Array<[MonoTy, MonoTy]>
 ): Result<TypeSubst, string> => {
     const sig: TypeSubst = {};
 
     while (eqs.length > 0) {
-        const [s, t] = eqs.pop() as [MonoTy, MonoTy];
+        const [s, t] = defined(eqs.pop());
 
         if (monoTypesEq(s, t)) { // Delete
             continue;
@@ -204,16 +200,16 @@ const unifyMany = (
             if (occurs(s, t)) {
                 return error('occur_check');
             } else {
-                const res = propagateClasses(s.context, t, instances);
+                const res = propagateClasses(s.context, t);
                 if (isError(res)) return res;
 
                 sig[s.value] = t;
 
                 for (let i = 0; i < eqs.length; i++) {
-                    const resA = substituteMono(eqs[i][0], sig, instances);
+                    const resA = substituteMono(eqs[i][0], sig);
                     if (isError(resA)) return resA;
 
-                    const resB = substituteMono(eqs[i][1], sig, instances);
+                    const resB = substituteMono(eqs[i][1], sig);
                     if (isError(resB)) return resB;
 
                     eqs[i][0] = resA.value;

@@ -58,6 +58,6 @@ instance (Eq a) => Eq (List a) where
 elem _ [] = False;
 elem x y::ys = if eq x y then True else elem x ys;
 
-showEq a b = (show a, show b, eq a b);
+showEq' a b = \show eq -> (show a, show b, eq a b);
 
-main = showEq;
+main = elem;

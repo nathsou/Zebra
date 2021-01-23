@@ -2,7 +2,7 @@ import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
 import { vars } from "../Interpreter/Pattern.ts";
 import { TypeDecl } from "../Parser/Decl.ts";
 import { appOf, lambdaOf } from "../Parser/Sugar.ts";
-import { decons, deepCopy, partition } from "../Utils/Common.ts";
+import { decons, deepCopy, defined, partition } from "../Utils/Common.ts";
 import { coreOf } from "./Casify.ts";
 import { CoreDecl, CoreFuncDecl, SingleExprProg } from "./CoreDecl.ts";
 import { CoreExpr, CoreLetInExpr, CoreLetRecInExpr, CoreVarExpr } from "./CoreExpr.ts";
@@ -54,7 +54,7 @@ export const singleExprProgOf = (prog: CoreDecl[]): SingleExprProg => {
             mutuallyRecPartialFuncs.set(
                 f,
                 rewriteMutuallyRecursiveFuncs(
-                    comp.map(f => funs.get(f)) as CoreFuncDecl[]
+                    comp.map(f => defined(funs.get(f)))
                 )
             );
 
@@ -80,7 +80,7 @@ export const singleExprProgOf = (prog: CoreDecl[]): SingleExprProg => {
     // reorder functions according to dependencies
     const reordered = [...reorderFunDecls('main', deps)]
         .filter(f => funs.has(f))
-        .map(f => funs.get(f) as CoreFuncDecl);
+        .map(f => defined(funs.get(f)));
 
     return {
         typeDecls,
@@ -233,7 +233,7 @@ const partialFunOf = (
     }
 
     if (mutuallyRecPartialFuncs.has(f.name)) {
-        return mutuallyRecPartialFuncs.get(f.name) as CoreLetRecInExpr;
+        return defined(mutuallyRecPartialFuncs.get(f.name));
     }
 
     return isFunDeclRecursive(f) ? partialLetRecIn(f) : partialLetIn(f);
@@ -247,7 +247,7 @@ const exprOfFunDeclsAux = (
     if (funs.length === 1) return funs[0].body;
 
     const [f, fs] = decons(funs);
-    const main = fs.pop() as CoreFuncDecl;
+    const main = defined(fs.pop());
 
     const top = partialFunOf(f, mutuallyRecPartialFuncs);
 

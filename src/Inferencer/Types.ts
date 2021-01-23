@@ -1,3 +1,4 @@
+import { defined } from "../Utils/Common.ts";
 import { Result } from "../Utils/Result.ts";
 import { freeVarsEnv, freeVarsMonoTy, substituteMono, substOf } from "./Unification.ts";
 
@@ -37,7 +38,7 @@ export const typeVarNamer = () => {
             memo.set(name, tyVar(memo.size));
         }
 
-        return memo.get(name) as TyVar;
+        return defined(memo.get(name));
     };
 };
 
@@ -73,11 +74,10 @@ export const resetTyVars = (): void => {
 * i.e associates new type names to every polymorphic variable
  */
 export const freshInstance = (
-    { polyVars, ty }: PolyTy,
-    instances: Map<string, string[]>
+    { polyVars, ty }: PolyTy
 ): Result<MonoTy, string> => {
     const freshTypes = polyVars.map(freshTyVar);
-    return substituteMono(ty, substOf(polyVars, freshTypes), instances);
+    return substituteMono(ty, substOf(polyVars, freshTypes));
 };
 
 /**
@@ -211,7 +211,7 @@ export const showTypeEnv = (env: TypeEnv): string => {
 export const canonicalizeTyVars = (t: MonoTy, renameMap: Map<TyVar['value'], TyVar> = new Map()): MonoTy => {
     if (isTyVar(t)) {
         if (renameMap.has(t.value)) {
-            return renameMap.get(t.value) as TyVar;
+            return defined(renameMap.get(t.value));
         } else {
             const n = tyVar(renameMap.size, t.context);
             renameMap.set(t.value, n);

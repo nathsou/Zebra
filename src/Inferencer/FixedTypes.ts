@@ -66,7 +66,7 @@ export const constantTy = (c: ConstantExpr): PolyTy => {
     }
 };
 
-const binopTyMap = {
+const binopTyMap: Record<string, PolyTy> = {
     '+': polyTy(intOpTy),
     '-': polyTy(intOpTy),
     '*': polyTy(intOpTy),
@@ -81,8 +81,8 @@ const binopTyMap = {
 };
 
 export const binopTy = (op: string): Maybe<PolyTy> => {
-    if ((binopTyMap as Record<string, PolyTy>)[op] !== undefined) {
-        return (binopTyMap as Record<string, PolyTy>)[op];
+    if (binopTyMap[op] !== undefined) {
+        return binopTyMap[op];
     }
 
     return None;

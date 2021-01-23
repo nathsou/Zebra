@@ -1,6 +1,6 @@
 import { assert } from "https://deno.land/std@0.73.0/testing/asserts.ts";
 import { showValue, TyConstVal } from "../Interpreter/Value.ts";
-import { decons } from "../Utils/Common.ts";
+import { decons, defined } from "../Utils/Common.ts";
 import { AppExpr, Expr, VarExpr } from "./Expr.ts";
 import { expr } from "./Parser.ts";
 
@@ -55,7 +55,7 @@ export const showList = (lst: TyConstVal): string => {
 export const appOf = (...exprs: Expr[]): AppExpr => {
     assert(exprs.length > 1);
 
-    const e = exprs.pop() as Expr;
+    const e = defined(exprs.pop());
 
     return {
         type: 'app',
