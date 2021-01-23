@@ -7,12 +7,16 @@ import { showDecisionTree } from "../DecisionTrees/DecisionTree.ts";
 import { clauseMatrixOf, compileClauseMatrix } from "../DecisionTrees/DecisionTreeCompiler.ts";
 import { PrimDecl } from "./PrimitiveDecl.ts";
 import { PrimExpr } from "./PrimitiveExpr.ts";
+import { isSome, Maybe } from "../../Utils/Maybe.ts";
 
 export const primitiveProgramOfCore = (coreProg: CoreDecl[]): PrimDecl[] => {
     const decls: PrimDecl[] = [];
 
     for (const decl of coreProg) {
-        decls.push(...primitiveDeclOfCoreDecl(decl));
+        const prim = primitiveDeclOfCoreDecl(decl);
+        if (isSome(prim)) {
+            decls.push(...prim);
+        }
     }
 
     return decls;
@@ -22,7 +26,7 @@ export const primitiveProgramOf = (prog: Decl[]): PrimDecl[] => {
     return primitiveProgramOfCore(casifyFunctionDeclarations(prog));
 };
 
-const primitiveDeclOfCoreDecl = (d: CoreDecl): PrimDecl[] => {
+const primitiveDeclOfCoreDecl = (d: CoreDecl): Maybe<PrimDecl[]> => {
     switch (d.type) {
         case 'fun':
             return [{
@@ -49,6 +53,7 @@ const primitiveDeclOfCoreDecl = (d: CoreDecl): PrimDecl[] => {
             });
 
             return vs;
+
     }
 };
 

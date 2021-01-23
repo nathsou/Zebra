@@ -27,7 +27,7 @@ export const error = <E>(value: E): Error<E> => ({
 });
 
 /**
- * checks wether res matches the 'Ok' variant of Result
+ * checks wether res matches the  variant of Result
  */
 export const isOk = <T, E>(res: Result<T, E>): res is Ok<T> =>
     res.type === "ok";
@@ -60,6 +60,10 @@ export const mapResult = <A, B, E>(as: Result<A, E>[], f: (a: A) => B): Result<B
     }
 
     return ok(bs);
+};
+
+export const reduceResult = <T, E>(as: Result<T, E>[]): Result<T[], E> => {
+    return mapResult(as, x => x);
 };
 
 export const fold = <T, A, E>(

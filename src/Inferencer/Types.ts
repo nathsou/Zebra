@@ -1,11 +1,12 @@
+import { Result } from "../Utils/Result.ts";
 import { freeVarsEnv, freeVarsMonoTy, substituteMono, substOf } from "./Unification.ts";
 
 // the type of monomorphic types
 export type MonoTy = TyVar | TyConst;
 
 // type variables are represented by integers
-export type TyVar = number;
-// export type TyVar = { value: number, context: TyClass[] };
+// export type TyVar = number;
+export type TyVar = { value: number, context: string[] };
 
 export type TyConst = {
     name: string,
@@ -14,17 +15,17 @@ export type TyConst = {
 
 export type TyClass = {
     name: string,
-    tyVars: TyVar[]
+    tyVars: TyVar['value'][]
 };
 
 // constructors
-export const tyVar = (n: number): TyVar => n;
+export const tyVar = (n: number, context: string[] = []): TyVar => ({ value: n, context });
 export const tyConst = (name: string, ...args: MonoTy[]): TyConst => ({ name, args });
 
 // a polymorphic type is a monomorphic type
 // with universally quantified type variables
 export type PolyTy = {
-    polyVars: TyVar[],
+    polyVars: TyVar['value'][],
     ty: MonoTy
 };
 
@@ -33,27 +34,34 @@ export const typeVarNamer = () => {
 
     return (name: string): TyVar => {
         if (!memo.has(name)) {
-            memo.set(name, memo.size);
+            memo.set(name, tyVar(memo.size));
         }
 
         return memo.get(name) as TyVar;
     };
 };
 
-export const polyTy = (ty: MonoTy, ...polyVars: TyVar[]): PolyTy => ({ polyVars, ty });
+export function polyTy(ty: MonoTy, ...polyVars: TyVar[]): PolyTy;
+export function polyTy(ty: MonoTy, ...polyVars: TyVar['value'][]): PolyTy;
+export function polyTy(ty: MonoTy, ...polyVars: any[]): PolyTy {
+    return {
+        ty,
+        polyVars: polyVars.map(v => typeof v === 'number' ? v : v.value)
+    };
+}
 
 export function isTyVar(x: MonoTy): x is TyVar {
-    return typeof x === 'number';
+    return (x as any)['context'] !== undefined;
 }
 
 export function isTyConst(x: MonoTy): x is TyConst {
-    return typeof x === 'object';
+    return (x as any)['args'] !== undefined;
 }
 
 let freshTyVarIndex = 0;
 
 export const freshTyVar = (): TyVar => {
-    return freshTyVarIndex++;
+    return tyVar(freshTyVarIndex++);
 };
 
 export const resetTyVars = (): void => {
@@ -64,9 +72,12 @@ export const resetTyVars = (): void => {
  * creates a fresh instance of a polymorphic type
 * i.e associates new type names to every polymorphic variable
  */
-export const freshInstance = ({ polyVars, ty }: PolyTy): MonoTy => {
+export const freshInstance = (
+    { polyVars, ty }: PolyTy,
+    instances: Map<string, string[]>
+): Result<MonoTy, string> => {
     const freshTypes = polyVars.map(freshTyVar);
-    return substituteMono(ty, substOf(polyVars, freshTypes));
+    return substituteMono(ty, substOf(polyVars, freshTypes), instances);
 };
 
 /**
@@ -90,7 +101,11 @@ export const monoTypesEq = (s: MonoTy, t: MonoTy): boolean => {
             s.args.every((a, i) => monoTypesEq(a, t.args[i]));
     }
 
-    return s === t;
+    if (isTyVar(s) && isTyVar(t)) {
+        return s.value === t.value;
+    }
+
+    return false;
 };
 
 
@@ -116,15 +131,23 @@ export const showMonoTy = (t: MonoTy): string => {
     return showTyConst(t);
 };
 
-export const showTyVar = (v: TyVar): string => {
+export function showTyVar(v: number): string;
+export function showTyVar(t: TyVar): string;
+export function showTyVar(t: number | TyVar): string {
+    const v = typeof t === 'number' ? t : t.value;
+
     const l = String.fromCharCode(945 + v % 23);
 
     if (v >= 23) {
         return l + `${Math.floor(v / 23)}`;
     }
 
+    // if (typeof t === 'object' && t.context.length !== 0) {
+    //     return `(${t.context.map(k => `${k} ${l}`).join(', ')}) => ${l}`;
+    // }
+
     return l;
-};
+}
 
 export const showTyConst = (v: TyConst): string => {
     switch (v.name) {
@@ -142,17 +165,56 @@ export const showPolyTy = (t: PolyTy): string => {
     return `${t.polyVars.map(v => `∀${showTyVar(v)}`)}, ${showMonoTy(t.ty)}`;
 };
 
+const collectContext = (
+    ty: MonoTy,
+    ctx: Map<TyVar['value'], Set<string>> = new Map()
+): Map<TyVar['value'], Set<string>> => {
+    if (isTyVar(ty)) {
+        for (const k of ty.context) {
+            if (!ctx.has(ty.value)) {
+                ctx.set(ty.value, new Set());
+            }
+
+            ctx.get(ty.value)?.add(k);
+        }
+    } else {
+        for (const arg of ty.args) {
+            collectContext(arg, ctx);
+        }
+    }
+
+    return ctx;
+};
+
+export const showOverloadedTy = (ty: MonoTy) => {
+    const str = showMonoTy(ty);
+    const ctx = collectContext(ty);
+
+    if (ctx.size === 0) return str;
+
+    const constraints = [];
+
+    for (const [a, classes] of ctx.entries()) {
+        const v = showTyVar(a);
+        for (const k of classes) {
+            constraints.push(`${k} ${v}`);
+        }
+    }
+
+    return `(${constraints.join(', ')}) => ${str}`;
+};
+
 export const showTypeEnv = (env: TypeEnv): string => {
     return `{ ${Object.entries(env).map(([x, ty]) => `${x} : ${showPolyTy(ty)}`).join(', ')} }`;
 };
 
-export const canonicalizeTyVars = (t: MonoTy, renameMap: Map<TyVar, TyVar> = new Map()): MonoTy => {
+export const canonicalizeTyVars = (t: MonoTy, renameMap: Map<TyVar['value'], TyVar> = new Map()): MonoTy => {
     if (isTyVar(t)) {
-        if (renameMap.has(t)) {
-            return renameMap.get(t) as TyVar;
+        if (renameMap.has(t.value)) {
+            return renameMap.get(t.value) as TyVar;
         } else {
-            const n = renameMap.size;
-            renameMap.set(t, n);
+            const n = tyVar(renameMap.size, t.context);
+            renameMap.set(t.value, n);
             return n;
         }
     }

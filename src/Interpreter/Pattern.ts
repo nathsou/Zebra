@@ -3,7 +3,7 @@ import { freshInstance, freshTyVar, MonoTy, polyTy, PolyTy, showMonoTy, TypeEnv 
 import { substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "../Inferencer/Unification.ts";
 import { envGet, envHas } from "../Utils/Env.ts";
 import { isNone, Maybe, None } from "../Utils/Maybe.ts";
-import { bind, error, fold, ok, Result } from "../Utils/Result.ts";
+import { bind, error, fold, isError, ok, Result } from "../Utils/Result.ts";
 import { Value } from "./Value.ts";
 
 export type Pattern = Var | Fun;
@@ -81,54 +81,67 @@ const unifyPatternMany = (eqs: Array<[Pattern, Value]>): Maybe<ValSubst> => {
     return sig;
 };
 
-export const checkedUnify = (s: MonoTy, t: MonoTy, p: Pattern): Result<TypeSubst, string> => {
-    const sig = unify(s, t);
+export const checkedUnify = (
+    s: MonoTy,
+    t: MonoTy,
+    p: Pattern,
+    instances: Map<string, string[]>
+): Result<TypeSubst, string> => {
+    const sig = unify(s, t, instances);
 
-    if (isNone(sig)) {
-        return error(`cannot unify ${showMonoTy(s)} with ${showMonoTy(t)} in pattern "${showPattern(p)}"`);
+    if (isError(sig)) {
+        return error(`${sig.value} : cannot unify ${showMonoTy(s)} with ${showMonoTy(t)} in pattern "${showPattern(p)}"`);
     }
 
-    return ok(sig);
+    return sig;
 };
 
 export const collectPatternSubst = (
     env: TypeEnv,
     p: Pattern,
     tau: MonoTy,
-    vars: Record<string, PolyTy>
+    vars: Record<string, PolyTy>,
+    instances: Map<string, string[]>
 ): Result<TypeSubst, string> => {
+
+    const unif = (s: MonoTy, t: MonoTy, pat: Pattern) =>
+        checkedUnify(s, t, pat, instances);
 
     // TODO: clean up
     if (isVar(p)) {
         // if this is a datatype variant
         if ((p[0] === p[0].toUpperCase()) && envHas(env, p)) {
-            return checkedUnify(tau, freshInstance(envGet(env, p)), p);
+            return bind(freshInstance(envGet(env, p), instances), freshTy => {
+                return unif(tau, freshTy, p);
+            });
         } else if (vars[p] !== undefined) {
-            return checkedUnify(tau, freshInstance(vars[p]), p);
+            return bind(freshInstance(vars[p], instances), freshTy => {
+                return unif(tau, freshTy, p);
+            });
         } else {
             const ty = freshTyVar();
             vars[p] = polyTy(ty);
-            return checkedUnify(tau, ty, p);
+            return unif(tau, ty, p);
         }
     }
 
     if (p.name === '_') {
-        return checkedUnify(tau, freshTyVar(), p);
+        return unif(tau, freshTyVar(), p);
     }
 
     // integers
     if (/[0-9]+/.test(p.name)) {
-        return checkedUnify(tau, intTy, p);
+        return unif(tau, intTy, p);
     }
 
     // floats
     if (/[0-9]*\.[0-9]+/.test(p.name)) {
-        return checkedUnify(tau, floatTy, p);
+        return unif(tau, floatTy, p);
     }
 
     // characters
     if (p.name[0] === "'") {
-        return checkedUnify(tau, charTy, p);
+        return unif(tau, charTy, p);
     }
 
     const constructorTy = p.name === 'tuple' ?
@@ -139,21 +152,31 @@ export const collectPatternSubst = (
         return error(`unknown variant: ${p.name} in pattern "${showPattern(p)}"`);
     }
 
-    const tys = uncurryFun(freshInstance(constructorTy));
+    const freshCtorTy = freshInstance(constructorTy, instances);
+    if (isError(freshCtorTy)) return freshCtorTy;
+
+    const tys = uncurryFun(freshCtorTy.value);
     const retTy = tys.pop() as MonoTy;
 
     const res = fold(tys, ([sig_i, gamma_i], tau_i, i) => {
-        const sig_i_tau_i = substituteMono(tau_i, sig_i);
-        return bind(collectPatternSubst(gamma_i, p.args[i], sig_i_tau_i, vars), sig => {
-            const gamma_n = substituteEnv(gamma_i, sig);
-            const sig_n = substCompose(sig, sig_i);
-            return ok([sig_n, gamma_n] as const);
+        return bind(substituteMono(tau_i, sig_i, instances), sig_i_tau_i => {
+            return bind(collectPatternSubst(gamma_i, p.args[i], sig_i_tau_i, vars, instances), sig => {
+                return bind(substituteEnv(gamma_i, sig, instances), gamma_n => {
+                    return bind(substCompose(instances, sig, sig_i), sig_n => {
+                        return ok([sig_n, gamma_n] as const);
+                    });
+                });
+            });
         });
     }, [{} as TypeSubst, env] as const);
 
     return bind(res, ([sig_n]) => {
-        return bind(checkedUnify(substituteMono(retTy, sig_n), substituteMono(tau, sig_n), p), sig2 => {
-            return ok(substCompose(sig2, sig_n));
+        return bind(substituteMono(retTy, sig_n, instances), s => {
+            return bind(substituteMono(tau, sig_n, instances), t => {
+                return bind(unif(s, t, p), sig2 => {
+                    return substCompose(instances, sig2, sig_n);
+                });
+            });
         });
     });
 };

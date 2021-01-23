@@ -1,13 +1,13 @@
 import { casify, groupByHead } from "../Core/Casify.ts";
 import { funTy } from "../Inferencer/FixedTypes.ts";
 import { MonoTy, PolyTy, polyTy, TyClass, TyConst, tyConst, typeVarNamer, TyVar } from "../Inferencer/Types.ts";
-import { freeVarsMonoTy } from "../Inferencer/Unification.ts";
+import { freeVarsMonoTy, substituteMono } from "../Inferencer/Unification.ts";
 import { Pattern } from "../Interpreter/Pattern.ts";
 import { mapValues } from "../Utils/Common.ts";
 import { mapOrDefault } from "../Utils/Maybe.ts";
-import { error } from "../Utils/Result.ts";
+import { error, okOrThrow } from "../Utils/Result.ts";
 import { alt, brackets, commas, keyword, leftassoc, many, map, maybeParens, oneOf, optional, parens, Parser, ParserRef, sepBy, seq, some, symbol, token } from "./Combinators.ts";
-import { Decl, FuncDecl } from "./Decl.ts";
+import { Decl, FuncDecl, TypeClassDecl } from "./Decl.ts";
 import { CaseOfExpr, CaseOfExprCase, CharExpr, ConstantExpr, Expr, FloatExpr, IntegerExpr, TyConstExpr, VarExpr } from "./Expr.ts";
 import { lambdaOf, listOf } from "./Sugar.ts";
 
@@ -206,7 +206,7 @@ const dataTypeDecl: Parser<Decl> = alt(map(
 
 const context: Parser<TyClass[]> = map(
     parens(commas(seq(token('identifier'), many(typeVar)))),
-    constraints => constraints.map(([{ name }, tyVars]) => ({ name, tyVars }))
+    constraints => constraints.map(([{ name }, tyVars]) => ({ name, tyVars: tyVars.map(t => t.value) }))
 );
 
 const typeAnnotation: Parser<[string, PolyTy]> = map(
@@ -214,22 +214,62 @@ const typeAnnotation: Parser<[string, PolyTy]> = map(
     ([{ name }, _, ty]) => [name, polyTy(ty, ...freeVarsMonoTy(ty))]
 );
 
+const typeClassDeclOf = (
+    context: TyClass[],
+    name: string,
+    tyVar: TyVar['value'],
+    methods: [string, PolyTy][]
+): TypeClassDecl => {
+    return {
+        type: 'typeclass',
+        context,
+        name,
+        tyVar,
+        methods: new Map(methods.map(([f, ty]) => {
+            const sig: { [key: number]: MonoTy } = {};
+            const tyVarClasses = new Map<number, string[]>();
+
+            tyVarClasses.set(tyVar, [name]);
+
+            for (const { name, tyVars } of context) {
+                for (const v of tyVars) {
+                    if (!tyVarClasses.has(v)) {
+                        tyVarClasses.set(v, []);
+                    }
+
+                    tyVarClasses.get(v)?.push(name);
+                }
+            }
+
+            for (const [v, classes] of tyVarClasses) {
+                sig[v] = { value: v, context: classes };
+            }
+
+            const resTy = polyTy(
+                okOrThrow(substituteMono(ty.ty, sig, new Map())),
+                ...ty.polyVars
+            );
+
+            return [f, resTy];
+        }))
+    };
+};
+
 const typeClassDecl: Parser<Decl> = alt(map(
     seq(
-        keyword("class"),
+        keyword('class'),
         optional(seq(context, token('bigarrow'))),
         token('identifier'),
         typeVar,
         keyword('where'),
         sepBy(typeAnnotation, 'comma')
     ),
-    ([_cl, ctx, { name }, tyVar, _where, methods]) => ({
-        type: 'typeclass',
-        context: mapOrDefault(ctx, ([classes]) => classes, []),
+    ([_cl, ctx, { name }, tyVar, _where, methods]) => typeClassDeclOf(
+        mapOrDefault(ctx, ([classes]) => classes, []),
         name,
-        tyVars: [tyVar],
-        methods: new Map(methods)
-    })
+        tyVar.value,
+        methods
+    )
 ), dataTypeDecl);
 
 // type class instance delcarations
@@ -239,7 +279,7 @@ const instanceDecl: Parser<Decl> = alt(map(
         keyword("instance"),
         optional(seq(context, token('bigarrow'))),
         token('identifier'),
-        type,
+        typeConst,
         keyword('where'),
         sepBy(funDecl, 'comma')
     ),

@@ -1,7 +1,7 @@
-import { DataTypeDecl, TypeDecl } from "../Parser/Decl.ts";
+import { TypeDecl } from "../Parser/Decl.ts";
 import { CoreExpr } from "./CoreExpr.ts";
 
-export type CoreDecl = CoreFuncDecl | DataTypeDecl;
+export type CoreDecl = CoreFuncDecl | TypeDecl;
 
 export type SingleExprProg = {
     typeDecls: TypeDecl[],

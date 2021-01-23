@@ -1,6 +1,6 @@
 import { compileCroco } from "./Evaluator/CrocoEvaluator.ts";
 import { compileNaive } from "./Evaluator/NaiveEvaluator.ts";
-import { showMonoTy } from "./Inferencer/Types.ts";
+import { showMonoTy, showOverloadedTy } from "./Inferencer/Types.ts";
 import { interpret } from "./Interpreter/Interpreter.ts";
 import { showValue } from "./Interpreter/Value.ts";
 import { parse } from "./Parser/Combinators.ts";
@@ -20,7 +20,7 @@ const run = async (source: string, target: string): Promise<void> => {
     } else {
         const compile = target === 'js' ? compileNaive : compileCroco;
         const out = bind(compile(source), ([ty, code]) => {
-            console.log(`${target === 'js' ? '//' : '--'} infered type: ${showMonoTy(ty)}`);
+            console.log(`${target === 'js' ? '//' : '--'} infered type: ${showOverloadedTy(ty)}`);
             return ok(code);
         }).value;
 

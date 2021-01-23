@@ -24,9 +24,9 @@ export const typeCheck = (prog: Decl[]): Result<{
 
     const singleExprProg = singleExprProgOf(coreProg);
 
-    const gamma = registerTypeDecls(singleExprProg.typeDecls);
+    const [gamma, instances] = registerTypeDecls(singleExprProg.typeDecls);
 
-    return bind(inferExprType(singleExprProg.main, gamma), ty => {
+    return bind(inferExprType(singleExprProg.main, gamma, instances), ty => {
         return ok({ ty: canonicalizeTyVars(ty), main, coreProg, singleExprProg });
     });
 };

@@ -9,12 +9,45 @@ class Eq a where
 class Show a where
     show : a -> List Char;
 
+instance Show Bool where
+    show True = "True",
+    show False = "False";
+
+map _ [] = [];
+map f h::tl = (f h)::(map f tl);
+
+prepend as [] = as;
+prepend [] bs = bs;
+prepend a::as bs = a :: (prepend as bs);
+
+append as bs = prepend bs as;
+
+flatten lists = flatten' lists [];
+flatten' [] acc = acc;
+flatten' lst::lists acc = flatten' lists (append lst acc);
+
+intercalate _ [] = [];
+intercalate _ [x] = [x];
+intercalate sep h::tl = h::sep::(intercalate sep tl);
+
+join sep lst = flatten (intercalate sep lst);
+
+instance (Show a) => Show (List a) where
+    show [] = "[]",
+    show lst = flatten ["[", join "," (map show lst), "]"];
+
 not False = True;
 not True = False;
 
 instance Eq Int where
     eq x y = x == y,
     neq x y = not (x == y);
+
+instance Eq Bool where
+    eq True True = True,
+    eq False False = True,
+    eq _ _ = False,
+    neq p q = not (eq p q);
 
 instance (Eq a) => Eq (List a) where
     eq [] [] = True,
@@ -23,6 +56,8 @@ instance (Eq a) => Eq (List a) where
     neq as bs = not (eq as bs);
 
 elem _ [] = False;
-elem x y::ys = if x == y then True else elem x ys;
+elem x y::ys = if eq x y then True else elem x ys;
 
-main = elem 3 [1, 2, 3, 4, 5, 6, 7, 8, 9];
+showEq a b = (show a, show b, eq a b);
+
+main = showEq;

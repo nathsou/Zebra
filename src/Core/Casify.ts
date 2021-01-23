@@ -16,6 +16,8 @@ export const casifyFunctionDeclarations = (prog: Decl[]): CoreDecl[] => {
                 funs.push(decl);
                 break;
             case 'datatype':
+            case 'typeclass':
+            case 'instance':
                 core.push(decl);
                 break;
         }
