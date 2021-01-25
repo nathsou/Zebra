@@ -1,6 +1,7 @@
 
 data Bool = True | False;
 data List a = Nil | Cons a (List a);
+data Nat = S Nat | Zero;
 
 class Eq a where
     eq : a -> a -> Bool,
@@ -12,6 +13,16 @@ class Show a where
 instance Show Bool where
     show True = "True",
     show False = "False";
+
+instance Show Nat where
+    show Zero = "0",
+    show (S prev) = flatten ["S(", show prev, ")"];
+
+instance Eq Nat where
+    eq Zero Zero = True,
+    eq (S a) (S b) = eq a b,
+    eq _ _ = False,
+    neq a b = not (eq a b);
 
 map _ [] = [];
 map f h::tl = (f h)::(map f tl);
@@ -39,6 +50,9 @@ instance (Show a) => Show (List a) where
 not False = True;
 not True = False;
 
+intEq x y = x == y;
+intNeq x y = x == y;
+
 instance Eq Int where
     eq x y = x == y,
     neq x y = not (x == y);
@@ -57,7 +71,5 @@ instance (Eq a) => Eq (List a) where
 
 elem _ [] = False;
 elem x y::ys = if eq x y then True else elem x ys;
-
-showEq' a b = \show eq -> (show a, show b, eq a b);
 
 main = elem;

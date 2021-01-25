@@ -91,3 +91,5 @@ export const okOrThrow = <T, E extends string>(res: Result<T, E>): T => {
 
     return res.value;
 };
+
+export type Unit = '()';

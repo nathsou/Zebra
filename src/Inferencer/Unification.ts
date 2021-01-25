@@ -1,6 +1,6 @@
 import { defined } from "../Utils/Common.ts";
 import { envMapRes } from "../Utils/Env.ts";
-import { bind, error, isError, ok, reduceResult, Result } from "../Utils/Result.ts";
+import { bind, error, isError, ok, reduceResult, Result, Unit } from "../Utils/Result.ts";
 import { typeDeclContext } from "./TypeDeclContext.ts";
 import { isTyVar, MonoTy, monoTypesEq, polyTy, PolyTy, showMonoTy, showTyVar, TyConst, tyConst, TypeEnv, tyVar, TyVar } from "./Types.ts";
 
@@ -17,7 +17,7 @@ export const unify = (
 const propagateClasses = (
     classes: string[],
     ty: MonoTy
-): Result<0, string> => {
+): Result<Unit, string> => {
     if (isTyVar(ty)) {
         for (const k of classes) {
             if (!ty.context.includes(k)) {
@@ -31,13 +31,13 @@ const propagateClasses = (
         }
     }
 
-    return ok(0);
+    return ok('()');
 };
 
 const propagateClassTyConst = (
     class_: string,
     ty: TyConst
-): Result<0, string> => {
+): Result<Unit, string> => {
     const res = findInstanceContext(ty.name, class_);
     if (isError(res)) return res;
 
@@ -45,13 +45,13 @@ const propagateClassTyConst = (
         propagateClasses([class_], arg);
     }
 
-    return ok(0);
+    return ok('()');
 };
 
 const findInstanceContext = (
     ctor: string,
     class_: string
-): Result<0, string> => {
+): Result<Unit, string> => {
     // console.log(`looking for an instance of ${class_} with ${ctor}`);
 
     const { instances } = typeDeclContext;
@@ -60,7 +60,7 @@ const findInstanceContext = (
         return error(`no instance of class ${class_} found for ${ctor}`);
     }
 
-    return ok(0);
+    return ok('()');
 };
 
 export function substituteMono(x: TyVar, sig: TypeSubst, excluded?: TyVar['value'][]): Result<MonoTy, string>;
@@ -69,9 +69,10 @@ export function substituteMono(m: MonoTy, sig: TypeSubst, excluded?: TyVar['valu
 export function substituteMono(m: MonoTy, sig: TypeSubst, excluded: TyVar['value'][] = []): Result<MonoTy, string> {
     if (isTyVar(m)) {
         if (sig[m.value] !== undefined && !excluded.includes(m.value)) {
-            if (sig[m.value] === m) return ok({ ...m });
+            const l = sig[m.value];
+            if (isTyVar(l) && l.value === m.value) return ok({ ...m });
 
-            return bind(substituteMono(sig[m.value], sig, excluded), ty => {
+            return bind(substituteMono(l, sig, excluded), ty => {
                 const res = propagateClasses(m.context, ty);
                 if (isError(res)) return res;
 

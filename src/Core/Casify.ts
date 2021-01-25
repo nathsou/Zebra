@@ -32,7 +32,7 @@ export const casifyFunctionDeclarations = (prog: Decl[]): CoreDecl[] => {
     return core;
 };
 
-const reducePatternMatchingToCaseOf = (fun: FuncDecl): CoreFuncDecl => {
+export const reducePatternMatchingToCaseOf = (fun: FuncDecl): CoreFuncDecl => {
     if (fun.args.every(isVar)) {
         return {
             type: 'fun',

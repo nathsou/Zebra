@@ -4,7 +4,7 @@
 
 ### Todo
 
-- [x] polymorphic sum types
+- [x] polymorphic data types
 - [x] pattern matching
 - [x] tuples
 - [ ] automatic semicolons
@@ -13,6 +13,7 @@
 - [ ] modules
 - [ ] type classes
 - [ ] support laziness
+- [ ] type annotations
 - [ ] IO
 
 ### Usage

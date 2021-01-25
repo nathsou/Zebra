@@ -1,5 +1,6 @@
 import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
 import { casifyFunctionDeclarations, coreOf } from "../src/Core/Casify.ts";
+import { partitionDecls } from "../src/Core/CoreDecl.ts";
 import { singleExprProgOf } from "../src/Core/ExprOfFunDecls.ts";
 import { boolTy, funTy, intTy } from "../src/Inferencer/FixedTypes.ts";
 import { inferExprType, registerTypeDecls } from "../src/Inferencer/Inferencer.ts";
@@ -22,7 +23,7 @@ const assertSameTypes = (a: MonoTy, b: MonoTy): void => {
 
 const assertType = (exp: string, ty: MonoTy): void => {
     const res = bind(parse(exp, expr), e => {
-        return bind(inferExprType(coreOf(e), gamma), tau => {
+        return bind(inferExprType(coreOf(e), gamma), ([tau]) => {
             assertSameTypes(tau, ty);
             return ok('');
         });
@@ -37,7 +38,7 @@ const assertMainType = (prog: string, ty: MonoTy): void => {
     const res = bind(parse(prog, program), decls => {
 
         const coreProg = casifyFunctionDeclarations(decls);
-        const prog = singleExprProgOf(coreProg);
+        const prog = singleExprProgOf(partitionDecls(coreProg), true);
 
         const main = decls.find(f => f.type === 'fun' && f.name === 'main') as Maybe<FuncDecl>;
 
@@ -45,7 +46,7 @@ const assertMainType = (prog: string, ty: MonoTy): void => {
 
         const gamma = registerTypeDecls(prog.typeDecls);
 
-        return bind(inferExprType(coreOf(main.body), gamma), tau => {
+        return bind(inferExprType(coreOf(main.body), gamma), ([tau]) => {
             assertSameTypes(tau, ty);
             return ok('');
         });
@@ -58,7 +59,7 @@ const assertMainType = (prog: string, ty: MonoTy): void => {
 
 const assertTypeError = (exp: string): void => {
     bind(parse(exp, expr), e => {
-        return bind(inferExprType(coreOf(e), gamma), tau => {
+        return bind(inferExprType(coreOf(e), gamma), ([tau]) => {
             throw new Error(`expected ${exp} to produce a type error, got: "${showMonoTy(tau)}"`);
         });
     });

@@ -1,11 +1,11 @@
 import { casifyFunctionDeclarations } from "../Core/Casify.ts";
-import { CoreDecl, CoreFuncDecl, SingleExprProg } from "../Core/CoreDecl.ts";
+import { CoreDecl, CoreFuncDecl, partitionDecls, SingleExprProg } from "../Core/CoreDecl.ts";
 import { singleExprProgOf } from "../Core/ExprOfFunDecls.ts";
 import { Decl } from "../Parser/Decl.ts";
 import { find } from "../Utils/Common.ts";
 import { isNone, Maybe } from "../Utils/Maybe.ts";
 import { bind, error, ok, Result } from "../Utils/Result.ts";
-import { inferExprType, registerTypeDecls } from "./Inferencer.ts";
+import { inferExprType, registerTypeDecls, typeCheckInstances } from "./Inferencer.ts";
 import { canonicalizeTyVars, MonoTy } from "./Types.ts";
 
 export const typeCheck = (prog: Decl[]): Result<{
@@ -25,11 +25,16 @@ export const typeCheck = (prog: Decl[]): Result<{
         return error(`main function not found`);
     }
 
-    const singleExprProg = singleExprProgOf(coreProg);
+    const decls = partitionDecls(coreProg);
+    const singleExprProg = singleExprProgOf(decls, true);
+
+    // console.log(showExpr(singleExprProg.main));
 
     const gamma = registerTypeDecls(singleExprProg.typeDecls);
 
-    return bind(inferExprType(singleExprProg.main, gamma), ty => {
-        return ok({ ty: canonicalizeTyVars(ty), main, coreProg, singleExprProg });
+    return bind(inferExprType(singleExprProg.main, gamma), ([ty, gamma2]) => {
+        return bind(typeCheckInstances(decls.instanceDecls, gamma2), () => {
+            return ok({ ty: canonicalizeTyVars(ty), main, coreProg, singleExprProg });
+        });
     });
 };

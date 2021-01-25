@@ -8,6 +8,7 @@ import { PrimDecl } from "../Primitive/PrimitiveDecl.ts";
 import { PrimExpr } from "../Primitive/PrimitiveExpr.ts";
 
 export const rename = (f: string): string => {
+    if (f === 'eval') return 'eval_';
     return f.replace(/'/g, '_prime_');
 };
 

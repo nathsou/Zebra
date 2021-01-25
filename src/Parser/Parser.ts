@@ -286,7 +286,7 @@ const instanceDecl: Parser<Decl> = alt(map(
     ([_inst, ctx, { name }, ty, _where, defs]) => ({
         type: 'instance',
         context: mapOrDefault(ctx, ([classes]) => classes, []),
-        name,
+        class_: name,
         ty,
         defs: mapValues(
             groupByHead(defs as FuncDecl[]),

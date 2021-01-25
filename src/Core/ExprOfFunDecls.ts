@@ -1,38 +1,77 @@
 import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
+import { isTyVar, MonoTy, TyConst } from "../Inferencer/Types.ts";
 import { vars } from "../Interpreter/Pattern.ts";
-import { TypeDecl } from "../Parser/Decl.ts";
+import { DataTypeDecl, InstanceDecl } from "../Parser/Decl.ts";
 import { appOf, lambdaOf } from "../Parser/Sugar.ts";
-import { decons, deepCopy, defined, partition } from "../Utils/Common.ts";
-import { coreOf } from "./Casify.ts";
-import { CoreDecl, CoreFuncDecl, SingleExprProg } from "./CoreDecl.ts";
+import { decons, deepCopy, defined } from "../Utils/Common.ts";
+import { coreOf, reducePatternMatchingToCaseOf } from "./Casify.ts";
+import { CoreFuncDecl, PartitionedDecls, SingleExprProg } from "./CoreDecl.ts";
 import { CoreExpr, CoreLetInExpr, CoreLetRecInExpr, CoreVarExpr } from "./CoreExpr.ts";
 
 type VarEnv = { [key: string]: true };
 type Graph<T> = Map<T, Set<T>>;
 type Dependencies = Graph<string>;
 
+const expandTy = (ty: MonoTy, acc: string[] = []) => {
+    if (isTyVar(ty)) return acc;
+
+    acc.push(ty.name);
+
+    for (const arg of ty.args) {
+        expandTy(arg, acc);
+    }
+
+    return acc;
+};
+
+export const renameTyClassInstance = (
+    method: string,
+    ty: TyConst,
+    class_: string
+): string => {
+    return `${class_}_${expandTy(ty).join('_')}_${method}`;
+};
+
+const funcDeclsOfTyClassInstance = (inst: InstanceDecl) => {
+    const funcs: CoreFuncDecl[] = [];
+
+    for (const [f, func] of inst.defs) {
+        funcs.push(reducePatternMatchingToCaseOf({
+            ...func,
+            name: renameTyClassInstance(
+                f,
+                inst.ty,
+                inst.class_
+            )
+        }));
+    }
+
+    return funcs;
+};
+
 // returns a single expression representing the whole program
 // which contains no global function declarations
 // and where mutually-recursive functions have been
 // rewritten to directly-recursive functions
-export const singleExprProgOf = (prog: CoreDecl[]): SingleExprProg => {
-    const [
-        funDecls,
-        typeDecls
-    ] = partition(prog, d => d.type === 'fun') as [CoreFuncDecl[], TypeDecl[]];
+export const singleExprProgOf = (
+    decls: PartitionedDecls,
+    includeUnusedDependencies = false
+): SingleExprProg => {
 
-    const deps = funcDeclsDependencies(funDecls, typeDecls);
+    const funcs = [...decls.funcDecls];
+
+    funcs.push(...decls.instanceDecls.map(funcDeclsOfTyClassInstance).flat());
+
+    const deps = funcDeclsDependencies(funcs, decls.dataTypeDecls);
     const mutuallyRec = mutuallyRecursiveFuncs(deps);
 
     const funs = new Map<string, CoreFuncDecl>();
 
-    for (const f of funDecls) {
+    for (const f of funcs) {
         funs.set(f.name, f);
     }
 
     const mutuallyRecPartialFuncs = new Map<string, CoreLetRecInExpr>();
-
-    // console.log(mutuallyRec);
 
     if (mutuallyRec.size > 0) {
         // each group of mutually recursive functions
@@ -77,13 +116,24 @@ export const singleExprProgOf = (prog: CoreDecl[]): SingleExprProg => {
         }
     }
 
+    // include unused dependencies (for type-cheking for instance)
+    if (includeUnusedDependencies) {
+        const depsOfMain = defined(deps.get('main'));
+
+        for (const f of deps.keys()) {
+            if (f !== 'main') {
+                depsOfMain.add(f);
+            }
+        }
+    }
+
     // reorder functions according to dependencies
     const reordered = [...reorderFunDecls('main', deps)]
         .filter(f => funs.has(f))
         .map(f => defined(funs.get(f)));
 
     return {
-        typeDecls,
+        typeDecls: [...decls.dataTypeDecls, ...decls.typeClassDecls, ...decls.instanceDecls],
         main: exprOfFunDeclsAux(reordered, mutuallyRecPartialFuncs)
     };
 };
@@ -265,7 +315,7 @@ const exprOfFunDeclsAux = (
 export const reorderFunDecls = (
     f: string,
     deps: Dependencies,
-    order: Set<string> = new Set() // Sets preserve order in JS
+    order = new Set<string>() // Sets preserve order in JS
 ): Set<string> => {
     if (order.has(f)) return order;
 
@@ -355,9 +405,9 @@ const mutuallyRecursiveFuncs = (deps: Dependencies): Graph<string> => {
 
 export const funcDeclsDependencies = (
     funDecls: CoreFuncDecl[],
-    typeDecls: TypeDecl[]
+    dataTypeDecls: DataTypeDecl[]
 ): Dependencies => {
-    const env = varEnvOf(...dataTypeVariants(typeDecls));
+    const env = varEnvOf(...dataTypeVariants(dataTypeDecls));
 
     const deps = new Map<string, Set<string>>();
 
@@ -369,14 +419,12 @@ export const funcDeclsDependencies = (
     return deps;
 };
 
-const dataTypeVariants = (typeDecls: TypeDecl[]): string[] => {
+const dataTypeVariants = (dataTypeDecl: DataTypeDecl[]): string[] => {
     const variants: string[] = [];
 
-    for (const dt of typeDecls) {
-        if (dt.type === 'datatype') {
-            for (const variant of dt.variants) {
-                variants.push(variant.name);
-            }
+    for (const dt of dataTypeDecl) {
+        for (const variant of dt.variants) {
+            variants.push(variant.name);
         }
     }
 

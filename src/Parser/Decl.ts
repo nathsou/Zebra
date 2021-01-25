@@ -33,7 +33,7 @@ export type TypeClassDecl = {
 export type InstanceDecl = {
     type: 'instance',
     context: TyClass[],
-    name: string,
+    class_: string,
     ty: TyConst,
     defs: Map<string, FuncDecl>
 };
@@ -53,7 +53,7 @@ export const showDecl = (decl: Decl): string => {
             return `class${showContext(decl.context)} ${decl.name} ${showTyVar(decl.tyVar)} where\n` +
                 [...decl.methods.entries()].map(([name, { ty }]) => `   ${name} : ${showMonoTy(canonicalizeTyVars(ty))}`).join('\n');
         case 'instance':
-            return `instance${showContext(decl.context)} ${decl.name} ${showMonoTy(canonicalizeTyVars(decl.ty))} where\n`
+            return `instance${showContext(decl.context)} ${decl.class_} ${showMonoTy(canonicalizeTyVars(decl.ty))} where\n`
                 + [...decl.defs.values()].map(d => `    ${showDecl(d)}`).join('\n');
     }
 };
