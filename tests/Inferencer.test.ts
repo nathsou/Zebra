@@ -36,17 +36,20 @@ const assertType = (exp: string, ty: MonoTy): void => {
 
 const assertMainType = (prog: string, ty: MonoTy): void => {
     const res = bind(parse(prog, program), decls => {
+        assert(decls.some(d => d.type === 'fun' && d.funName.name === 'main'));
 
         const coreProg = casifyFunctionDeclarations(decls);
-        const prog = singleExprProgOf(partitionDecls(coreProg), true);
+        const pdecls = partitionDecls(coreProg);
 
-        const main = decls.find(f => f.type === 'fun' && f.name === 'main') as Maybe<FuncDecl>;
+        const prog = singleExprProgOf(pdecls, true);
 
-        assert(isSome(main));
+        registerTypeDecls([
+            ...pdecls.dataTypeDecls,
+            ...pdecls.instanceDecls,
+            ...pdecls.typeClassDecls
+        ]);
 
-        const gamma = registerTypeDecls(prog.typeDecls);
-
-        return bind(inferExprType(coreOf(main.body), gamma), ([tau]) => {
+        return bind(inferExprType(prog), ([tau]) => {
             assertSameTypes(tau, ty);
             return ok('');
         });

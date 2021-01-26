@@ -11,7 +11,7 @@
 - [x] JS compiler
 - [ ] records
 - [ ] modules
-- [ ] type classes
+- [x] type classes
 - [ ] support laziness
 - [ ] type annotations
 - [ ] IO
