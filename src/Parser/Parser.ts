@@ -1,14 +1,15 @@
-import { casify, groupByHead } from "../Core/Casify.ts";
+import { casify, groupByHead, reducePatternMatchingToCaseOf } from "../Core/Casify.ts";
+import { nextTyVarId } from "../Inferencer/Context.ts";
 import { funTy } from "../Inferencer/FixedTypes.ts";
 import { MonoTy, PolyTy, polyTy, TyClass, TyConst, tyConst, typeVarNamer, TyVar } from "../Inferencer/Types.ts";
 import { freeVarsMonoTy, substituteMono } from "../Inferencer/Unification.ts";
-import { Pattern } from "../Interpreter/Pattern.ts";
+import { Pattern, patVarOf } from "../Interpreter/Pattern.ts";
 import { mapValues } from "../Utils/Common.ts";
 import { mapOrDefault } from "../Utils/Maybe.ts";
 import { error, okOrThrow } from "../Utils/Result.ts";
 import { alt, brackets, commas, keyword, leftassoc, many, map, maybeParens, oneOf, optional, parens, Parser, ParserRef, sepBy, seq, some, symbol, token } from "./Combinators.ts";
 import { Decl, FuncDecl, TypeClassDecl } from "./Decl.ts";
-import { CaseOfExpr, CaseOfExprCase, CharExpr, ConstantExpr, Expr, FloatExpr, IntegerExpr, TyConstExpr, VarExpr } from "./Expr.ts";
+import { CaseOfExpr, CaseOfExprCase, CharExpr, ConstantExpr, Expr, FloatExpr, IntegerExpr, TyConstExpr, VarExpr, varOf } from "./Expr.ts";
 import { lambdaOf, listOf } from "./Sugar.ts";
 
 // https://www.haskell.org/onlinereport/syntax-iso.html
@@ -25,7 +26,11 @@ const integer: Parser<IntegerExpr> = map(token('integer'), ({ value }) => ({
     type: 'constant', kind: 'integer', value
 }));
 
-const charOf = (c: string): CharExpr => ({ type: 'constant', kind: 'char', value: c });
+const charOf = (c: string): CharExpr => ({
+    type: 'constant',
+    kind: 'char',
+    value: c
+});
 
 const char: Parser<CharExpr> = map(token('char'), ({ value: c }) => charOf(c));
 
@@ -38,8 +43,9 @@ const constant: Parser<ConstantExpr> = oneOf(integer, char, float);
 const string: Parser<Expr> = map(token('string'), ({ value }) =>
     listOf(value.split('').map(charOf)));
 
-const variable: Parser<VarExpr> = map(token('variable'), ({ name }) => ({ type: 'variable', name }));
-const identifier: Parser<VarExpr> = map(token('identifier'), ({ name }) => ({ type: 'variable', name }));
+const variable: Parser<VarExpr> = map(token('variable'), ({ name }) => varOf(name));
+
+const identifier: Parser<VarExpr> = map(token('identifier'), ({ name }) => varOf(name));
 
 const unit: Parser<TyConstExpr> = map(
     seq(token('lparen'), token('rparen')),
@@ -53,7 +59,7 @@ const tuple: Parser<TyConstExpr> = alt(map(
 
 const nil: Parser<Expr> = map(
     seq(token('lbracket'), token('rbracket')),
-    () => ({ type: 'tyconst', name: 'Nil', args: [] })
+    () => (({ type: 'tyconst', name: 'Nil', args: [] }))
 );
 
 const list = alt(map(brackets(commas(expr)), listOf), nil);
@@ -84,11 +90,11 @@ cons.ref = alt(map(
     seq(app, token('cons'), cons),
     ([left, _, right]) => ({
         type: 'app',
-        lhs: {
+        lhs: ({
             type: 'app',
-            lhs: { type: 'variable', name: 'Cons' },
+            lhs: varOf('Cons'),
             rhs: left
-        },
+        }),
         rhs: right
     })
 ), app);
@@ -101,7 +107,12 @@ const comparison: Parser<Expr> = leftassoc(
 
 const ifThenElse: Parser<Expr> = alt(map(
     seq(keyword('if'), expr, keyword('then'), expr, keyword('else'), expr),
-    ([_if, cond, _then, thenBranch, _else, elseBranch]) => ({ type: 'if_then_else', cond, thenBranch, elseBranch })
+    ([_if, cond, _then, thenBranch, _else, elseBranch]) => ({
+        type: 'if_then_else',
+        cond,
+        thenBranch,
+        elseBranch
+    })
 ), comparison);
 
 const case_: Parser<CaseOfExprCase> = map(
@@ -123,7 +134,7 @@ const letRecIn: Parser<Expr> = alt(map(
     seq(keyword('let'), keyword('rec'), variable, many(pattern), symbol('='), expr, keyword('in'), expr),
     ([_let, _rec, f, args, _eq, middle, _in, right]) => ({
         type: 'let_rec_in',
-        funName: f.name,
+        funName: varOf(f.name),
         arg: args[0],
         middle: args.length === 1 ? middle : lambdaOf(args.slice(1), middle),
         right
@@ -145,7 +156,7 @@ const funDecl: Parser<Decl> = map(
     seq(token('variable'), some(pattern), symbol('='), expr),
     ([f, args, _eq, body]) => ({
         type: 'fun',
-        name: f.name,
+        funName: varOf(f.name),
         args,
         body: body
     })
@@ -290,7 +301,7 @@ const instanceDecl: Parser<Decl> = alt(map(
         ty,
         defs: mapValues(
             groupByHead(defs as FuncDecl[]),
-            (decls, f) => casify(f, decls)
+            (decls, f) => [nextTyVarId(), reducePatternMatchingToCaseOf(casify(f, decls))]
         )
     })
 ), typeClassDecl);
@@ -308,7 +319,7 @@ const varPattern: Parser<Pattern> = alt(map(token('variable'), ({ name }) => {
     if (name === '_') {
         return { name: '_', args: [] };
     } else {
-        return name;
+        return patVarOf(name);
     }
 }), parensPat);
 

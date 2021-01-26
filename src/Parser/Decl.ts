@@ -1,8 +1,9 @@
-import { canonicalizeTyVars, MonoTy, PolyTy, showMonoTy, showTyVar, TyClass, TyConst, TyVar } from "../Inferencer/Types.ts";
+import { CoreFuncDecl, showCoreDecl } from "../Core/CoreDecl.ts";
+import { canonicalizeTyVars, PolyTy, showMonoTy, showTyVar, TyClass, TyConst, TyVar } from "../Inferencer/Types.ts";
 import { Pattern, showPattern } from "../Interpreter/Pattern.ts";
-
 // Declarations are expressions affecting the global environment
-import { Expr, showExpr } from "./Expr.ts";
+import { Expr, showExpr, VarExpr } from "./Expr.ts";
+
 
 export type Decl = FuncDecl | TypeDecl;
 
@@ -10,7 +11,7 @@ export type TypeDecl = DataTypeDecl | TypeClassDecl | InstanceDecl;
 
 export type FuncDecl = {
     type: 'fun',
-    name: string,
+    funName: VarExpr,
     args: Pattern[],
     body: Expr
 };
@@ -35,10 +36,10 @@ export type InstanceDecl = {
     context: TyClass[],
     class_: string,
     ty: TyConst,
-    defs: Map<string, FuncDecl>
+    defs: Map<string, [TyVar['value'], CoreFuncDecl]>
 };
 
-const showContext = (ctx: TyClass[]): string => {
+export const showContext = (ctx: TyClass[]): string => {
     if (ctx.length === 0) return '';
     return ` (${ctx.map(c => `${c.name} ${c.tyVars.map(showTyVar).join(' ')}`).join(', ')}) => `;
 };
@@ -46,7 +47,7 @@ const showContext = (ctx: TyClass[]): string => {
 export const showDecl = (decl: Decl): string => {
     switch (decl.type) {
         case 'fun':
-            return `${decl.name} ${decl.args.map(showPattern).join(' ')} = ${showExpr(decl.body)}`;
+            return `${decl.funName} ${decl.args.map(showPattern).join(' ')} = ${showExpr(decl.body)}`;
         case 'datatype':
             return `data ${decl.name} ${decl.typeVars.map(showMonoTy).join(' ')} = \n` + decl.variants.map(v => '  | ' + showMonoTy(v)).join('\n');
         case 'typeclass':
@@ -54,6 +55,6 @@ export const showDecl = (decl: Decl): string => {
                 [...decl.methods.entries()].map(([name, { ty }]) => `   ${name} : ${showMonoTy(canonicalizeTyVars(ty))}`).join('\n');
         case 'instance':
             return `instance${showContext(decl.context)} ${decl.class_} ${showMonoTy(canonicalizeTyVars(decl.ty))} where\n`
-                + [...decl.defs.values()].map(d => `    ${showDecl(d)}`).join('\n');
+                + [...decl.defs.values()].map(([_, d]) => `    ${showCoreDecl(d)}`).join('\n');
     }
 };

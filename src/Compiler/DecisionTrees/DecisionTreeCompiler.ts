@@ -46,7 +46,7 @@ export const subtermsOccurences = (
     subTermIndex = 0
 ): Dict<PrimSubtermOccurence> => {
     if (isVar(p)) {
-        return dictSet(sigma, p, {
+        return dictSet(sigma, p.value, {
             type: 'subterm',
             index: subTermIndex,
             pos: []
@@ -77,7 +77,7 @@ export const collectBindings = (
     };
 
     if (isVar(p)) {
-        sigma[p] = occ;
+        sigma[p.value] = occ;
     } else {
         for (const [s, idx] of indexed(p.args)) {
             collectBindings(s, sigma, idx, occ);

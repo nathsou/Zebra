@@ -1,10 +1,10 @@
-import { Expr } from "./Expr.ts";
+import { Expr, varOf } from "./Expr.ts";
 
 export const renameVars = (e: Expr, renameMap: { [x: string]: string }): Expr => {
     switch (e.type) {
         case 'variable':
             if (renameMap[e.name] !== undefined) {
-                return { type: 'variable', name: renameMap[e.name] };
+                return varOf(renameMap[e.name]);
             } else {
                 return e;
             }
@@ -65,11 +65,6 @@ export const renameVars = (e: Expr, renameMap: { [x: string]: string }): Expr =>
             }
         }
         case 'case_of': {
-            console.log('case_of', e.cases.map(({ pattern, expr }) => ({
-                pattern,
-                expr: renameVars(expr, renameMap)
-            })));
-
             return {
                 type: 'case_of',
                 arity: e.arity,

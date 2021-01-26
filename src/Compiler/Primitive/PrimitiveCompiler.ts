@@ -31,8 +31,8 @@ const primitiveDeclOfCoreDecl = (d: CoreDecl): Maybe<PrimDecl[]> => {
         case 'fun':
             return [{
                 type: 'fun',
-                name: d.name,
-                args: d.args,
+                name: d.funName.name,
+                args: d.args.map(a => a.name),
                 body: primitiveOf(d.body)
             }];
         case 'datatype':
@@ -94,21 +94,21 @@ export const primitiveOf = (e: CoreExpr): PrimExpr => {
         case 'lambda':
             return {
                 type: 'lambda',
-                arg: e.arg,
+                arg: e.arg.name,
                 body: primitiveOf(e.body)
             };
         case 'let_in':
             return {
                 type: 'let_in',
-                left: e.left,
+                left: e.left.name,
                 middle: primitiveOf(e.middle),
                 right: primitiveOf(e.right)
             };
         case 'let_rec_in':
             return {
                 type: 'let_rec_in',
-                arg: e.arg,
-                funName: e.funName,
+                arg: e.arg.name,
+                funName: e.funName.name,
                 middle: primitiveOf(e.middle),
                 right: primitiveOf(e.right)
             };

@@ -1,6 +1,7 @@
-import { CoreDecl } from "../../Core/CoreDecl.ts";
+import { CoreDecl, CoreFuncDecl } from "../../Core/CoreDecl.ts";
+import { context } from "../../Inferencer/Context.ts";
 import { lambdaOf } from "../../Parser/Sugar.ts";
-import { head, tail } from "../../Utils/Common.ts";
+import { defined, head, tail } from "../../Utils/Common.ts";
 import { DecisionTree } from "../DecisionTrees/DecisionTree.ts";
 import { IndexedOccurence } from "../DecisionTrees/DecisionTreeCompiler.ts";
 import { primitiveProgramOfCore } from "../Primitive/PrimitiveCompiler.ts";
@@ -40,7 +41,12 @@ export const naiveJsProgramOf = (prog: CoreDecl[]): string => {
     const prim = primitiveProgramOfCore(prog);
 
     for (const decl of prim) {
-        out.push(naiveJsDeclOf(decl));
+        if (
+            decl.type === 'fun' ||
+            context.datatypes.has(decl.name)
+        ) {
+            out.push(naiveJsDeclOf(decl));
+        }
     }
 
     const ret = (usedEqu ? `${equ}\n\n` : '') + out.join('\n\n');
@@ -87,7 +93,7 @@ const naiveJsExprOf = (e: PrimExpr): string => {
 
             return `${lhs} ${e.operator} ${rhs}`;
         case 'lambda':
-            return `${e.arg} => ${naiveJsExprOf(e.body)}`;
+            return `(${e.arg} => ${naiveJsExprOf(e.body)})`;
         case 'let_in':
             return `(${e.left} => ${naiveJsExprOf(e.right)})(${naiveJsExprOf(e.middle)})`;
         case 'let_rec_in':

@@ -1,5 +1,6 @@
-import { defined } from "../Utils/Common.ts";
+import { defined, sameElems } from "../Utils/Common.ts";
 import { Result } from "../Utils/Result.ts";
+import { nextTyVarId } from "./Context.ts";
 import { freeVarsEnv, freeVarsMonoTy, substituteMono, substOf } from "./Unification.ts";
 
 // the type of monomorphic types
@@ -59,14 +60,8 @@ export function isTyConst(x: MonoTy): x is TyConst {
     return (x as any)['args'] !== undefined;
 }
 
-let freshTyVarIndex = 0;
-
 export const freshTyVar = (): TyVar => {
-    return tyVar(freshTyVarIndex++);
-};
-
-export const resetTyVars = (): void => {
-    freshTyVarIndex = 0;
+    return tyVar(nextTyVarId());
 };
 
 /**
@@ -108,18 +103,9 @@ export const monoTypesEq = (s: MonoTy, t: MonoTy): boolean => {
     return false;
 };
 
-
-const sameElems = <T>(a: T[], b: T[]): boolean => {
-    if (a.length !== b.length) return false;
-
-    const aSet = new Set(a);
-    const bSet = new Set(b);
-
-    for (const s of aSet) {
-        if (!bSet.has(s)) return false;
-    }
-
-    return true;
+export const isTyOverloaded = (ty: MonoTy): boolean => {
+    if (isTyVar(ty)) return ty.context.length > 0;
+    return ty.args.some(isTyOverloaded);
 };
 
 export const polyTypesEq = (s: PolyTy, t: PolyTy): boolean => {
@@ -220,4 +206,18 @@ export const canonicalizeTyVars = (t: MonoTy, renameMap: Map<TyVar['value'], TyV
     }
 
     return tyConst(t.name, ...t.args.map(a => canonicalizeTyVars(a, renameMap)));
+};
+
+export const expandTy = (ty: MonoTy, acc: string[] = []): string[] => {
+    if (isTyVar(ty)) return acc;
+
+    if (ty.name !== '->') {
+        acc.push(ty.name);
+    }
+
+    for (const arg of ty.args) {
+        expandTy(arg, acc);
+    }
+
+    return acc;
 };

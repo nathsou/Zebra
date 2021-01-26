@@ -1,3 +1,4 @@
+import { assert, assertEquals } from "https://deno.land/std@0.83.0/testing/asserts.ts";
 import { Maybe, None } from "./Maybe.ts";
 
 export const partition = <T>(vals: T[], pred: (v: T) => boolean): [T[], T[]] => {
@@ -186,4 +187,17 @@ export const find = <T>(vals: T[], pred: (v: T) => boolean): Maybe<T> => {
     }
 
     return None;
+};
+
+export const sameElems = <T>(a: T[], b: T[]): boolean => {
+    if (a.length !== b.length) return false;
+
+    const aSet = new Set(a);
+    const bSet = new Set(b);
+
+    for (const s of aSet) {
+        if (!bSet.has(s)) return false;
+    }
+
+    return true;
 };

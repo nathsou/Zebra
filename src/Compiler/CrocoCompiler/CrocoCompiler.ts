@@ -1,4 +1,5 @@
 import { coreOf } from "../../Core/Casify.ts";
+import { CoreDecl } from "../../Core/CoreDecl.ts";
 import { coreExprFreeVars, varEnvOf } from "../../Core/ExprOfFunDecls.ts";
 import { isVar, Pattern, vars } from "../../Interpreter/Pattern.ts";
 import { Decl } from "../../Parser/Decl.ts";
@@ -21,7 +22,7 @@ export const crocoProgramOf = (prog: Decl[]): string => {
     // collect function names
     for (const decl of prog) {
         if (decl.type === 'fun') {
-            funcNames.add(decl.name);
+            funcNames.add(decl.funName.name);
         }
     }
 
@@ -33,7 +34,11 @@ export const crocoProgramOf = (prog: Decl[]): string => {
     return topLevelFuncs.join('\n') + '\n' + decls;
 };
 
-export const crocoDeclOf = (decl: Decl, topLevelFuncs: string[], funcNames: Set<string>): string => {
+export const crocoDeclOf = (
+    decl: Decl,
+    topLevelFuncs: string[],
+    funcNames: Set<string>
+): string => {
     switch (decl.type) {
         case 'datatype':
         case 'typeclass':
@@ -41,7 +46,7 @@ export const crocoDeclOf = (decl: Decl, topLevelFuncs: string[], funcNames: Set<
             return '';
 
         case 'fun':
-            const name = rename(decl.name);
+            const name = rename(decl.funName.name);
             const args = decl.args.map(crocoPatternOf).join(' ');
             const body = crocoExprOf(decl.body, topLevelFuncs, funcNames);
             return `${name} ${args} = ${body}`;
@@ -49,7 +54,7 @@ export const crocoDeclOf = (decl: Decl, topLevelFuncs: string[], funcNames: Set<
 };
 
 export const crocoPatternOf = (pattern: Pattern): string => {
-    if (isVar(pattern)) return pattern;
+    if (isVar(pattern)) return pattern.value;
 
     if (pattern.name === 'Nil') return '[]';
     if (pattern.name === 'Cons') {
@@ -82,8 +87,8 @@ export const crocoExprOf = (expr: Expr, topLevelFuncs: string[], funcNames: Set<
         case 'let_rec_in': {
             const name = `LetRec${topLevelFuncs.length}`;
             const left = crocoPatternOf(expr.arg);
-            const middle = crocoExprOf(renameVars(expr.middle, { [expr.funName]: name }), topLevelFuncs, funcNames);
-            const right = crocoExprOf(renameVars(expr.right, { [expr.funName]: name }), topLevelFuncs, funcNames);
+            const middle = crocoExprOf(renameVars(expr.middle, { [expr.funName.name]: name }), topLevelFuncs, funcNames);
+            const right = crocoExprOf(renameVars(expr.right, { [expr.funName.name]: name }), topLevelFuncs, funcNames);
             topLevelFuncs.push(`${name} ${left} = ${middle}`);
 
             return right;
@@ -111,7 +116,7 @@ export const crocoExprOf = (expr: Expr, topLevelFuncs: string[], funcNames: Set<
             for (const c of expr.cases) {
                 const fv = coreExprFreeVars(
                     coreOf(c.expr),
-                    varEnvOf(...vars(c.pattern), ...funcNames));
+                    varEnvOf(...[...vars(c.pattern)].map(v => v.value), ...funcNames));
 
                 for (const v of fv) {
                     if (v[0] === v[0].toLowerCase()) {

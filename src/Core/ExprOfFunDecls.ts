@@ -1,28 +1,17 @@
 import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
-import { isTyVar, MonoTy, TyConst } from "../Inferencer/Types.ts";
+import { expandTy, isTyVar, MonoTy, TyConst } from "../Inferencer/Types.ts";
 import { vars } from "../Interpreter/Pattern.ts";
 import { DataTypeDecl, InstanceDecl } from "../Parser/Decl.ts";
+import { VarExpr, varOf } from "../Parser/Expr.ts";
 import { appOf, lambdaOf } from "../Parser/Sugar.ts";
 import { decons, deepCopy, defined } from "../Utils/Common.ts";
-import { coreOf, reducePatternMatchingToCaseOf } from "./Casify.ts";
-import { CoreFuncDecl, PartitionedDecls, SingleExprProg } from "./CoreDecl.ts";
+import { coreOf } from "./Casify.ts";
+import { CoreFuncDecl, PartitionedDecls } from "./CoreDecl.ts";
 import { CoreExpr, CoreLetInExpr, CoreLetRecInExpr, CoreVarExpr } from "./CoreExpr.ts";
 
 type VarEnv = { [key: string]: true };
 type Graph<T> = Map<T, Set<T>>;
 type Dependencies = Graph<string>;
-
-const expandTy = (ty: MonoTy, acc: string[] = []) => {
-    if (isTyVar(ty)) return acc;
-
-    acc.push(ty.name);
-
-    for (const arg of ty.args) {
-        expandTy(arg, acc);
-    }
-
-    return acc;
-};
 
 export const renameTyClassInstance = (
     method: string,
@@ -35,15 +24,19 @@ export const renameTyClassInstance = (
 const funcDeclsOfTyClassInstance = (inst: InstanceDecl) => {
     const funcs: CoreFuncDecl[] = [];
 
-    for (const [f, func] of inst.defs) {
-        funcs.push(reducePatternMatchingToCaseOf({
+    for (const [f, [id, func]] of inst.defs) {
+        funcs.push({
             ...func,
-            name: renameTyClassInstance(
-                f,
-                inst.ty,
-                inst.class_
-            )
-        }));
+            funName: {
+                type: 'variable',
+                name: renameTyClassInstance(
+                    f,
+                    inst.ty,
+                    inst.class_
+                ),
+                id
+            }
+        });
     }
 
     return funcs;
@@ -56,8 +49,7 @@ const funcDeclsOfTyClassInstance = (inst: InstanceDecl) => {
 export const singleExprProgOf = (
     decls: PartitionedDecls,
     includeUnusedDependencies = false
-): SingleExprProg => {
-
+): CoreExpr => {
     const funcs = [...decls.funcDecls];
 
     funcs.push(...decls.instanceDecls.map(funcDeclsOfTyClassInstance).flat());
@@ -68,7 +60,7 @@ export const singleExprProgOf = (
     const funs = new Map<string, CoreFuncDecl>();
 
     for (const f of funcs) {
-        funs.set(f.name, f);
+        funs.set(f.funName.name, f);
     }
 
     const mutuallyRecPartialFuncs = new Map<string, CoreLetRecInExpr>();
@@ -132,10 +124,7 @@ export const singleExprProgOf = (
         .filter(f => funs.has(f))
         .map(f => defined(funs.get(f)));
 
-    return {
-        typeDecls: [...decls.dataTypeDecls, ...decls.typeClassDecls, ...decls.instanceDecls],
-        main: exprOfFunDeclsAux(reordered, mutuallyRecPartialFuncs)
-    };
+    return exprOfFunDeclsAux(reordered, mutuallyRecPartialFuncs);
 };
 
 const addEnvMut = (env: VarEnv, ...xs: string[]): VarEnv => {
@@ -151,8 +140,6 @@ export const varEnvOf = (...xs: string[]) => addEnvMut({}, ...xs);
 
 const renameMutualRecFunc = (f: string) => `%${f}%`;
 
-const varOf = (x: string): CoreVarExpr => ({ type: 'variable', name: x });
-
 const ReplaceMe = varOf('ReplaceMe');
 
 // suppose f and g are mutally recursive:
@@ -166,7 +153,7 @@ const ReplaceMe = varOf('ReplaceMe');
 const rewriteMutuallyRecursiveFunc = (
     f: CoreFuncDecl,
     // functions not yet in f's environment
-    undefinedFuncs: Readonly<string[]>,
+    undefinedFuncs: Readonly<VarExpr[]>,
     // accumulate the original function definitions
     defs: { top: CoreLetInExpr | null, bottom: CoreLetInExpr | null }
 ): CoreLetRecInExpr => {
@@ -175,14 +162,17 @@ const rewriteMutuallyRecursiveFunc = (
         ...f.args
     ]);
 
-    const f_ = renameMutualRecFunc(f.name);
+    const f_: CoreVarExpr = {
+        ...f.funName,
+        name: renameMutualRecFunc(f.funName.name)
+    };
 
     const nextDef: CoreLetInExpr = {
         type: 'let_in',
-        left: f.name,
+        left: f.funName,
         middle: undefinedFuncs.length === 0 ?
-            varOf(f_) :
-            coreOf(appOf(...[f_, ...undefinedFuncs].map(varOf))),
+            f_ :
+            coreOf(appOf(...[f_, ...undefinedFuncs])),
         right: ReplaceMe
     };
 
@@ -215,7 +205,7 @@ const rewriteMutuallyRecursiveFuncs = (
     assert(funcs.length > 1);
     const [f, fs] = decons(funcs);
 
-    const remaining = fs.map(f => f.name);
+    const remaining = fs.map(f => f.funName);
     const defs: {
         top: CoreLetInExpr | null,
         bottom: CoreLetInExpr | null
@@ -244,7 +234,7 @@ const partialLetRecIn = (f: CoreFuncDecl): CoreLetRecInExpr => {
     return {
         type: 'let_rec_in',
         arg: x,
-        funName: f.name,
+        funName: f.funName,
         middle: xs.length === 0 ? f.body : lambdaOf(xs, f.body),
         right: ReplaceMe
     };
@@ -253,7 +243,7 @@ const partialLetRecIn = (f: CoreFuncDecl): CoreLetRecInExpr => {
 const partialLetIn = (f: CoreFuncDecl): CoreLetInExpr => {
     return {
         type: 'let_in',
-        left: f.name,
+        left: f.funName,
         middle: lambdaOf(f.args, f.body),
         right: ReplaceMe
     };
@@ -276,14 +266,14 @@ const partialFunOf = (
     if (f.args.length === 0) {
         return {
             type: 'let_in',
-            left: f.name,
+            left: f.funName,
             middle: f.body,
             right: ReplaceMe
         };
     }
 
-    if (mutuallyRecPartialFuncs.has(f.name)) {
-        return defined(mutuallyRecPartialFuncs.get(f.name));
+    if (mutuallyRecPartialFuncs.has(f.funName.name)) {
+        return defined(mutuallyRecPartialFuncs.get(f.funName.name));
     }
 
     return isFunDeclRecursive(f) ? partialLetRecIn(f) : partialLetIn(f);
@@ -310,6 +300,22 @@ const exprOfFunDeclsAux = (
     attachRight(bottom, main.body);
 
     return top;
+};
+
+export const usedFuncDecls = (
+    f: string,
+    deps: Dependencies,
+    used = new Set<string>()
+): Set<string> => {
+    if (used.has(f)) return used;
+    used.add(f);
+
+    for (const g of deps.get(f) ?? []) {
+        usedFuncDecls(g, deps, used);
+    }
+
+
+    return used;
 };
 
 export const reorderFunDecls = (
@@ -413,7 +419,7 @@ export const funcDeclsDependencies = (
 
     for (const f of funDecls) {
         const freeVars = coreFunDeclFreeVars(f, env);
-        deps.set(f.name, freeVars);
+        deps.set(f.funName.name, freeVars);
     }
 
     return deps;
@@ -432,11 +438,11 @@ const dataTypeVariants = (dataTypeDecl: DataTypeDecl[]): string[] => {
 };
 
 const isFunDeclRecursive = (f: CoreFuncDecl): boolean => {
-    return coreExprFreeVars(f.body, varEnvOf(...f.args)).has(f.name);
+    return coreExprFreeVars(f.body, varEnvOf(...f.args.map(v => v.name))).has(f.funName.name);
 };
 
 export const coreFunDeclFreeVars = (f: CoreFuncDecl, env: VarEnv) => {
-    return coreExprFreeVars(f.body, addEnv(env, f.name, ...f.args));
+    return coreExprFreeVars(f.body, addEnv(env, f.funName.name, ...f.args.map(v => v.name)));
 };
 
 export const coreExprFreeVars = (
@@ -453,13 +459,13 @@ export const coreExprFreeVars = (
             break;
         }
         case 'let_in': {
-            const env2 = addEnv(env, e.left);
+            const env2 = addEnv(env, e.left.name);
             coreExprFreeVars(e.middle, env2, freeVars);
             coreExprFreeVars(e.right, env2, freeVars);
             break;
         }
         case 'let_rec_in': {
-            const env2 = addEnv(env, e.funName, e.arg);
+            const env2 = addEnv(env, e.funName.name, e.arg.name);
             coreExprFreeVars(e.middle, env2, freeVars);
             coreExprFreeVars(e.right, env2, freeVars);
             break;
@@ -475,7 +481,7 @@ export const coreExprFreeVars = (
             break;
         }
         case 'lambda': {
-            coreExprFreeVars(e.body, addEnv(env, e.arg), freeVars);
+            coreExprFreeVars(e.body, addEnv(env, e.arg.name), freeVars);
             break;
         }
         case 'if_then_else': {
@@ -488,7 +494,7 @@ export const coreExprFreeVars = (
             coreExprFreeVars(e.value, env, freeVars);
 
             for (const { pattern, expr } of e.cases) {
-                const env2 = addEnv(env, ...vars(pattern));
+                const env2 = addEnv(env, ...[...vars(pattern)].map(v => v.value));
                 coreExprFreeVars(expr, env2, freeVars);
             }
             break;

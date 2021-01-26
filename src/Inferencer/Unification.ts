@@ -1,7 +1,7 @@
-import { defined } from "../Utils/Common.ts";
+import { defined, sameElems } from "../Utils/Common.ts";
 import { envMapRes } from "../Utils/Env.ts";
 import { bind, error, isError, ok, reduceResult, Result, Unit } from "../Utils/Result.ts";
-import { typeDeclContext } from "./TypeDeclContext.ts";
+import { context } from "./Context.ts";
 import { isTyVar, MonoTy, monoTypesEq, polyTy, PolyTy, showMonoTy, showTyVar, TyConst, tyConst, TypeEnv, tyVar, TyVar } from "./Types.ts";
 
 export type TypeSubst = Record<TyVar['value'], MonoTy>;
@@ -54,7 +54,7 @@ const findInstanceContext = (
 ): Result<Unit, string> => {
     // console.log(`looking for an instance of ${class_} with ${ctor}`);
 
-    const { instances } = typeDeclContext;
+    const { instances } = context;
 
     if (!instances.get(class_)?.includes(ctor)) {
         return error(`no instance of class ${class_} found for ${ctor}`);
@@ -70,7 +70,13 @@ export function substituteMono(m: MonoTy, sig: TypeSubst, excluded: TyVar['value
     if (isTyVar(m)) {
         if (sig[m.value] !== undefined && !excluded.includes(m.value)) {
             const l = sig[m.value];
-            if (isTyVar(l) && l.value === m.value) return ok({ ...m });
+            if (
+                isTyVar(l) &&
+                l.value === m.value &&
+                sameElems(l.context, m.context)
+            ) {
+                return ok({ ...m });
+            }
 
             return bind(substituteMono(l, sig, excluded), ty => {
                 const res = propagateClasses(m.context, ty);

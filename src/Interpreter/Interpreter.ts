@@ -1,9 +1,9 @@
 import { CoreDecl, CoreFuncDecl } from "../Core/CoreDecl.ts";
-import { CoreExpr, CoreTyConstExpr } from "../Core/CoreExpr.ts";
+import { CoreExpr, CoreTyConstExpr, showCoreExpr } from "../Core/CoreExpr.ts";
 import { typeCheck } from "../Inferencer/TypeCheck.ts";
 import { MonoTy } from "../Inferencer/Types.ts";
 import { Decl } from "../Parser/Decl.ts";
-import { showExpr } from "../Parser/Expr.ts";
+import { varOf } from "../Parser/Expr.ts";
 import { lambdaOf } from "../Parser/Sugar.ts";
 import { envAdd, envGet, envHas, envSum } from "../Utils/Env.ts";
 import { isSome } from "../Utils/Maybe.ts";
@@ -130,22 +130,22 @@ const evalExpr = (expr: CoreExpr, env: ValEnv): EvalResult => {
             }
         case 'let_in':
             return bind(evalExpr(expr.middle, env), val => {
-                const env2 = envAdd(env, expr.left, val);
+                const env2 = envAdd(env, expr.left.name, val);
                 return evalExpr(expr.right, env2);
             });
         case 'let_rec_in':
             const recvar: RecVarVal = {
                 type: 'recvar',
-                name: expr.funName,
-                arg: expr.arg,
+                name: expr.funName.name,
+                arg: expr.arg.name,
                 body: expr.middle,
                 env
             };
 
-            const env2 = envAdd(env, expr.funName, recvar);
+            const env2 = envAdd(env, expr.funName.name, recvar);
             return evalExpr(expr.right, env2);
         case 'lambda':
-            return ok({ type: 'closure', arg: expr.arg, body: expr.body, env });
+            return ok({ type: 'closure', arg: expr.arg.name, body: expr.body, env });
         case 'app':
             return bind(checkType(evalExpr(expr.lhs, env), 'closure'), f => {
                 return bind(evalExpr(expr.rhs, env), val => {
@@ -162,7 +162,7 @@ const evalExpr = (expr: CoreExpr, env: ValEnv): EvalResult => {
                     }
                 }
 
-                return error(`pattern matching is not exhaustive in "${showExpr(expr)}"`);
+                return error(`pattern matching is not exhaustive in "${showCoreExpr(expr)}"`);
             });
     }
 };
@@ -178,16 +178,22 @@ export const registerDecl = (decls: CoreDecl[]): Result<ValEnv, EvalError> => {
                     // constant declaration
                     constants.push(decl);
                 } else {
-                    const curried = lambdaOf(decl.args.length > 0 ? decl.args : ['_'], decl.body);
+                    const curried = lambdaOf(
+                        decl.args.length > 0 ?
+                            decl.args :
+                            [varOf('_')],
+                        decl.body
+                    );
+
                     const recvar: RecVarVal = {
                         type: 'recvar',
-                        name: decl.name,
-                        arg: curried.arg,
+                        name: decl.funName.name,
+                        arg: curried.arg.name,
                         body: curried.body,
                         env
                     };
 
-                    env[decl.name] = recvar;
+                    env[decl.funName.name] = recvar;
                 }
                 break;
             }
@@ -206,13 +212,13 @@ export const registerDecl = (decls: CoreDecl[]): Result<ValEnv, EvalError> => {
                         const body: CoreTyConstExpr = {
                             type: 'tyconst',
                             name: variant.name,
-                            args: args.map(x => ({ type: 'variable', name: x }))
+                            args: args.map(x => varOf(x))
                         };
 
                         env[variant.name] = {
                             type: 'closure',
                             arg: args[0],
-                            body: args.length > 1 ? lambdaOf(args.slice(1), body) : body,
+                            body: args.length > 1 ? lambdaOf(args.slice(1).map(varOf), body) : body,
                             env
                         };
                     }
@@ -225,11 +231,11 @@ export const registerDecl = (decls: CoreDecl[]): Result<ValEnv, EvalError> => {
     // evaluate constant declarations
     // "unbound variable" errors can occur
     // if constants[n] references constants[m] where n < m
-    for (const { name, body } of constants) {
+    for (const { funName, body } of constants) {
         const res = evalExpr(body, env);
 
         if (isOk(res)) {
-            env[name] = res.value;
+            env[funName.name] = res.value;
         } else {
             return res;
         }

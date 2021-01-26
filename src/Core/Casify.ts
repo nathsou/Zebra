@@ -1,7 +1,7 @@
 import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
-import { isVar } from "../Interpreter/Pattern.ts";
+import { isVar, patVarOfVar, varOfPatVar } from "../Interpreter/Pattern.ts";
 import { Decl, FuncDecl } from "../Parser/Decl.ts";
-import { CaseOfExpr, Expr } from "../Parser/Expr.ts";
+import { CaseOfExpr, Expr, TyConstExpr, varOf } from "../Parser/Expr.ts";
 import { gen } from "../Utils/Common.ts";
 import { CoreDecl, CoreFuncDecl } from "./CoreDecl.ts";
 import { CoreCaseOfExpr, CoreExpr, CoreTyConstExpr } from "./CoreExpr.ts";
@@ -36,8 +36,8 @@ export const reducePatternMatchingToCaseOf = (fun: FuncDecl): CoreFuncDecl => {
     if (fun.args.every(isVar)) {
         return {
             type: 'fun',
-            name: fun.name,
-            args: fun.args,
+            funName: fun.funName,
+            args: fun.args.map(varOfPatVar),
             body: coreOf(fun.body)
         };
     } else {
@@ -46,11 +46,11 @@ export const reducePatternMatchingToCaseOf = (fun: FuncDecl): CoreFuncDecl => {
         // f x1 x2 ... xn = case (x1, x2, ..., xn) of (p1, p2, ..., pn) -> body
 
         const arity = fun.args.length;
-        const args = gen(arity, n => `x${n}`);
+        const args = gen(arity, n => varOf(`x${n}`));
 
         const testedVal: CoreExpr = arity === 1 ?
-            { type: 'variable', name: args[0] } :
-            tupleOf(args.map(x => ({ type: 'variable', name: x })));
+            args[0] :
+            coreTupleOf(args);
 
         const caseOf: CoreCaseOfExpr = {
             type: 'case_of',
@@ -64,7 +64,7 @@ export const reducePatternMatchingToCaseOf = (fun: FuncDecl): CoreFuncDecl => {
 
         return {
             type: 'fun',
-            name: fun.name,
+            funName: fun.funName,
             args,
             body: caseOf
         };
@@ -82,20 +82,22 @@ export const coreOf = (e: Expr): CoreExpr => {
             if (isVar(x)) {
                 return {
                     type: 'lambda',
-                    arg: x,
+                    arg: varOfPatVar(x),
                     body: coreOf(e.body)
                 };
             } else {
                 // \pat -> e
                 // -->
                 // \x -> case x of pat -> e
+
+                const x = varOf('x');
                 return {
                     type: 'lambda',
-                    arg: 'x',
+                    arg: x,
                     body: {
                         type: 'case_of',
                         arity: 1,
-                        value: { type: 'variable', name: 'x' },
+                        value: x,
                         cases: [{
                             pattern: e.arg,
                             expr: coreOf(e.body)
@@ -109,7 +111,7 @@ export const coreOf = (e: Expr): CoreExpr => {
             if (isVar(x)) {
                 return {
                     type: 'let_in',
-                    left: x,
+                    left: varOfPatVar(x),
                     middle: coreOf(e.middle),
                     right: coreOf(e.right)
                 };
@@ -133,7 +135,7 @@ export const coreOf = (e: Expr): CoreExpr => {
             if (isVar(x)) {
                 return {
                     type: 'let_rec_in',
-                    arg: x,
+                    arg: varOfPatVar(x),
                     funName: e.funName,
                     middle: coreOf(e.middle),
                     right: coreOf(e.right)
@@ -142,14 +144,16 @@ export const coreOf = (e: Expr): CoreExpr => {
                 // let rec f pat = val in e
                 // -->
                 // let rec f x = case x of pat -> val in e
+
+                const x = varOf('x');
                 return {
                     type: 'let_rec_in',
-                    arg: 'x',
+                    arg: x,
                     funName: e.funName,
                     right: coreOf(e.right),
                     middle: {
                         type: 'case_of',
-                        value: { type: 'variable', name: 'x' },
+                        value: x,
                         arity: 1,
                         cases: [{
                             pattern: e.arg,
@@ -164,7 +168,10 @@ export const coreOf = (e: Expr): CoreExpr => {
                 type: 'case_of',
                 value: coreOf(e.value),
                 arity: e.arity,
-                cases: e.cases.map(c => ({ pattern: c.pattern, expr: coreOf(c.expr) }))
+                cases: e.cases.map(c => ({
+                    pattern: c.pattern,
+                    expr: coreOf(c.expr)
+                }))
             };
         }
         case 'tyconst': {
@@ -205,7 +212,15 @@ export const coreOf = (e: Expr): CoreExpr => {
     return e;
 };
 
-const tupleOf = (vals: CoreExpr[]): CoreTyConstExpr => {
+const coreTupleOf = (vals: CoreExpr[]): CoreTyConstExpr => {
+    return {
+        type: 'tyconst',
+        name: 'tuple',
+        args: vals
+    };
+};
+
+const tupleOf = (vals: Expr[]): TyConstExpr => {
     return {
         type: 'tyconst',
         name: 'tuple',
@@ -225,11 +240,11 @@ export const casify = (name: string, funs: FuncDecl[]): FuncDecl => {
     );
 
     // each definition can name arguments differently
-    const renamedArgs = gen(arity, n => `x${n}`);
+    const renamedArgs = gen(arity, n => varOf(`x${n}`));
 
     const testedVal: Expr = arity === 1 ?
-        { type: 'variable', name: renamedArgs[0] } :
-        tupleOf(renamedArgs.map(x => ({ type: 'variable', name: x })));
+        renamedArgs[0] :
+        tupleOf(renamedArgs);
 
     const caseOf: CaseOfExpr = {
         type: 'case_of',
@@ -243,8 +258,8 @@ export const casify = (name: string, funs: FuncDecl[]): FuncDecl => {
 
     return {
         type: 'fun',
-        name,
-        args: renamedArgs,
+        funName: funs[0].funName,
+        args: renamedArgs.map(patVarOfVar),
         body: caseOf
     };
 };
@@ -253,11 +268,11 @@ export const groupByHead = (funs: FuncDecl[]): Map<string, FuncDecl[]> => {
     const grouped = new Map<string, FuncDecl[]>();
 
     for (const f of funs) {
-        if (!grouped.has(f.name)) {
-            grouped.set(f.name, []);
+        if (!grouped.has(f.funName.name)) {
+            grouped.set(f.funName.name, []);
         }
 
-        grouped.get(f.name)?.push(f);
+        grouped.get(f.funName.name)?.push(f);
     }
 
     return grouped;

@@ -4,8 +4,7 @@ data List a = Nil | Cons a (List a);
 data Nat = S Nat | Zero;
 
 class Eq a where
-    eq : a -> a -> Bool,
-    neq : a -> a -> Bool;
+    eq : a -> a -> Bool;
 
 class Show a where
     show : a -> List Char;
@@ -18,11 +17,10 @@ instance Show Nat where
     show Zero = "0",
     show (S prev) = flatten ["S(", show prev, ")"];
 
-instance Eq Nat where
-    eq Zero Zero = True,
-    eq (S a) (S b) = eq a b,
-    eq _ _ = False,
-    neq a b = not (eq a b);
+-- instance Eq Nat where
+--     eq Zero Zero = True,
+--     eq (S a) (S b) = eq a b,
+--     eq _ _ = False;
 
 map _ [] = [];
 map f h::tl = (f h)::(map f tl);
@@ -50,26 +48,24 @@ instance (Show a) => Show (List a) where
 not False = True;
 not True = False;
 
-intEq x y = x == y;
-intNeq x y = x == y;
-
-instance Eq Int where
-    eq x y = x == y,
-    neq x y = not (x == y);
-
 instance Eq Bool where
     eq True True = True,
     eq False False = True,
-    eq _ _ = False,
-    neq p q = not (eq p q);
+    eq _ _ = False;
 
 instance (Eq a) => Eq (List a) where
     eq [] [] = True,
+    -- FIXME: ajouter une fun decl pour chaque couple (method, type)
     eq a::as b::bs = if eq a b then eq as bs else False,
-    eq _ _ = False,
-    neq as bs = not (eq as bs);
+    eq _ _ = False;
 
-elem _ [] = False;
-elem x y::ys = if eq x y then True else elem x ys;
+any _ [] = False;
+any pred x::xs = if pred x then True else any pred xs;
 
-main = elem;
+-- elem : (a -> Bool) -> List a -> Bool;
+elem x = any (\y -> eq x y);
+
+instance Show Char where
+    show c = [c];
+
+main = eq [False, True] [False, True];

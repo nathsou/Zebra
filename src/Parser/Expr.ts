@@ -1,11 +1,32 @@
+import { nextVarId } from "../Inferencer/Context.ts";
 import { Pattern, showPattern } from "../Interpreter/Pattern.ts";
 
-export type Expr = AtomicExpr | BinopExpr | LetInExpr | LetRecInExpr |
-    LambdaExpr | IfThenElseExpr | AppExpr | CaseOfExpr;
+export type Expr =
+    AtomicExpr |
+    BinopExpr |
+    LetInExpr |
+    LetRecInExpr |
+    LambdaExpr |
+    IfThenElseExpr |
+    AppExpr |
+    CaseOfExpr;
+
+export const varOf = (name: string) => {
+    const res = varOfAux(name);
+    // console.log(`varOf: ${name} : ${res.id}`);
+    return res;
+};
+
+export const varOfAux = (name: string): VarExpr => ({
+    type: 'variable',
+    name,
+    id: nextVarId()
+});
 
 export type VarExpr = {
     type: 'variable',
-    name: string
+    name: string,
+    id: number
 };
 
 export type TyConstExpr = {
@@ -49,7 +70,7 @@ export type LetInExpr = {
 
 export type LetRecInExpr = {
     type: 'let_rec_in',
-    funName: string,
+    funName: VarExpr,
     arg: Pattern,
     middle: Expr,
     right: Expr

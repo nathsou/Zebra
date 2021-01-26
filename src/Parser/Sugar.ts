@@ -1,8 +1,7 @@
-import { assert } from "https://deno.land/std@0.73.0/testing/asserts.ts";
+import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
 import { showValue, TyConstVal } from "../Interpreter/Value.ts";
-import { decons, defined } from "../Utils/Common.ts";
-import { AppExpr, Expr, VarExpr } from "./Expr.ts";
-import { expr } from "./Parser.ts";
+import { defined } from "../Utils/Common.ts";
+import { AppExpr, Expr, varOf } from "./Expr.ts";
 
 type LambdaExpr<T, K> = { type: 'lambda', arg: K, body: T };
 
@@ -24,8 +23,8 @@ export const listOf = (vals: Expr[]): Expr => {
     return cons(vals);
 };
 
-const Cons: VarExpr = { type: 'variable', name: 'Cons' };
-const Nil: VarExpr = { type: 'variable', name: 'Nil' };
+const Cons = varOf('Cons');
+const Nil = varOf('Nil');
 
 export const cons = (vals: Expr[]): Expr => {
     if (vals.length === 0) return Nil;

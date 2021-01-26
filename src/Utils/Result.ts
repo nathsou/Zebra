@@ -47,6 +47,42 @@ export const bind = <A, B, E>(res: Result<A, E>, f: (val: A) => Result<B, E>): R
     return f(res.value);
 };
 
+export const bind2 = <A, B, T, E>(
+    a: Result<A, E>,
+    b: Result<B, E>,
+    f: (val: [A, B]) => Result<T, E>
+): Result<T, E> => {
+    if (isError(a)) return a;
+    if (isError(b)) return b;
+    return f([a.value, b.value]);
+};
+
+export const bind3 = <A, B, C, T, E>(
+    a: Result<A, E>,
+    b: Result<B, E>,
+    c: Result<C, E>,
+    f: (val: [A, B, C]) => Result<T, E>
+): Result<T, E> => {
+    if (isError(a)) return a;
+    if (isError(b)) return b;
+    if (isError(c)) return c;
+    return f([a.value, b.value, c.value]);
+};
+
+export const bind4 = <A, B, C, D, T, E>(
+    a: Result<A, E>,
+    b: Result<B, E>,
+    c: Result<C, E>,
+    d: Result<D, E>,
+    f: (val: [A, B, C, D]) => Result<T, E>
+): Result<T, E> => {
+    if (isError(a)) return a;
+    if (isError(b)) return b;
+    if (isError(c)) return c;
+    if (isError(d)) return d;
+    return f([a.value, b.value, c.value, d.value]);
+};
+
 /**
  * maps an array of results to a result of unwrapped and mapped values
  * if at least one value is an Error, then the result is Error

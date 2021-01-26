@@ -1,7 +1,8 @@
+import { context, nextVarId } from "../Inferencer/Context.ts";
 import { charTy, floatTy, intTy, tupleTy, uncurryFun } from "../Inferencer/FixedTypes.ts";
-import { typeDeclContext } from "../Inferencer/TypeDeclContext.ts";
 import { freshInstance, freshTyVar, MonoTy, polyTy, PolyTy, showMonoTy, TypeEnv } from "../Inferencer/Types.ts";
 import { substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "../Inferencer/Unification.ts";
+import { VarExpr } from "../Parser/Expr.ts";
 import { defined } from "../Utils/Common.ts";
 import { Maybe, None } from "../Utils/Maybe.ts";
 import { bind, error, fold, isError, ok, Result } from "../Utils/Result.ts";
@@ -9,16 +10,32 @@ import { Value } from "./Value.ts";
 
 export type Pattern = Var | Fun;
 
-export type Var = string;
+export type Var = { value: string, id: number };
 export type Fun = { name: string, args: Pattern[] };
 export type ValSubst = { [x: string]: Value };
 
+export const patVarOf = (name: string) => ({
+    value: name,
+    id: nextVarId()
+});
+
+export const patVarOfVar = (v: VarExpr): Var => ({
+    value: v.name,
+    id: v.id
+});
+
+export const varOfPatVar = (v: Var): VarExpr => ({
+    type: 'variable',
+    name: v.value,
+    id: v.id
+});
+
 export function isVar(x: Pattern): x is Var {
-    return typeof x === 'string';
+    return typeof (x as Record<string, any>)['value'] === 'string';
 }
 
 export function isFun(f: Pattern): f is Fun {
-    return typeof f === 'object';
+    return !isVar(f);
 }
 
 export const vars = (p: Pattern, acc: Set<Var> = new Set()): Set<Var> => {
@@ -46,7 +63,7 @@ const unifyPatternMany = (eqs: Array<[Pattern, Value]>): Maybe<ValSubst> => {
 
         if (isVar(p)) { // Eliminate
             const x = p;
-            sig[x] = v;
+            sig[x.value] = v;
             continue;
         }
 
@@ -104,18 +121,18 @@ export const collectPatternSubst = (
 ): Result<TypeSubst, string> => {
     if (isVar(p)) {
         // if this is a datatype variant
-        if (typeDeclContext.datatypes.has(p)) {
-            const variantTy = defined(typeDeclContext.datatypes.get(p));
+        if (context.datatypes.has(p.value)) {
+            const variantTy = defined(context.datatypes.get(p.value));
             return bind(freshInstance(variantTy), freshTy => {
                 return checkedUnify(tau, freshTy, p);
             });
-        } else if (vars[p] !== undefined) {
-            return bind(freshInstance(vars[p]), freshTy => {
+        } else if (vars[p.value] !== undefined) {
+            return bind(freshInstance(vars[p.value]), freshTy => {
                 return checkedUnify(tau, freshTy, p);
             });
         } else {
             const ty = freshTyVar();
-            vars[p] = polyTy(ty);
+            vars[p.value] = polyTy(ty);
             return checkedUnify(tau, ty, p);
         }
     }
@@ -139,13 +156,13 @@ export const collectPatternSubst = (
         return checkedUnify(tau, charTy, p);
     }
 
-    if (p.name !== 'tuple' && !typeDeclContext.datatypes.has(p.name)) {
+    if (p.name !== 'tuple' && !context.datatypes.has(p.name)) {
         return error(`unknown variant: ${p.name} in pattern "${showPattern(p)}"`);
     }
 
     const constructorTy = p.name === 'tuple' ?
         tupleTy(p.args.length) :
-        defined(typeDeclContext.datatypes.get(p.name));
+        defined(context.datatypes.get(p.name));
 
     const freshCtorTy = freshInstance(constructorTy);
     if (isError(freshCtorTy)) return freshCtorTy;
@@ -177,7 +194,7 @@ export const collectPatternSubst = (
 };
 
 export const showPattern = (p: Pattern): string => {
-    if (isVar(p)) return p;
+    if (isVar(p)) return p.value;
     if (p.args.length === 0) return p.name;
     if (p.name === 'tuple') {
         return `(${p.args.map(showPattern).join(', ')})`;

@@ -1,8 +1,6 @@
-import { CoreExpr } from "../Core/CoreExpr.ts";
-import { showExpr } from "../Parser/Expr.ts";
+import { CoreExpr, showCoreExpr } from "../Core/CoreExpr.ts";
 import { showList } from "../Parser/Sugar.ts";
 import { Env } from "../Utils/Env.ts";
-import { showPattern } from "./Pattern.ts";
 
 export type ValEnv = Env<Value>;
 
@@ -75,7 +73,7 @@ export const showValue = (val: Value): string => {
         case 'char':
             return `'${val.value}'`;
         case 'closure':
-            return `λ${showPattern(val.arg)} -> ${showExpr(val.body)}`;
+            return `λ${val.arg} -> ${showCoreExpr(val.body)}`;
         case 'tyconst':
             switch (val.name) {
                 case 'tuple':
@@ -92,7 +90,7 @@ export const showValue = (val: Value): string => {
                 return `(${val.name} ${val.args.map(showValue).join(' ')})`;
             }
         case 'recvar':
-            return `rec λ${val.arg} -> ${showExpr(val.body)}`;
+            return `rec λ${val.arg} -> ${showCoreExpr(val.body)}`;
     }
 };
 

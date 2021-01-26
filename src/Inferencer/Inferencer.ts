@@ -1,45 +1,44 @@
 import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
-import { CoreExpr } from "../Core/CoreExpr.ts";
-import { renameTyClassInstance } from "../Core/ExprOfFunDecls.ts";
+import { CoreExpr, showCoreExpr } from "../Core/CoreExpr.ts";
 import { collectPatternSubst } from "../Interpreter/Pattern.ts";
 import { InstanceDecl, TypeDecl } from "../Parser/Decl.ts";
-import { Expr, showExpr } from "../Parser/Expr.ts";
+import { VarExpr } from "../Parser/Expr.ts";
 import { defined, gen } from "../Utils/Common.ts";
-import { emptyEnv, envAdd, envAddMut, envGet, envHas, envRem, envSum } from "../Utils/Env.ts";
+import { envAdd as envAddAux, envGet, envHas, envRem, envSum } from "../Utils/Env.ts";
 import { isNone } from "../Utils/Maybe.ts";
 import { bind, error, fold, isError, ok, Result, Unit } from "../Utils/Result.ts";
+import { context, MethodName } from "./Context.ts";
 import { binopTy, boolTy, constantTy, funReturnTy, funTy, unitTy } from "./FixedTypes.ts";
-import { clearTypeDeclContext, typeDeclContext } from "./TypeDeclContext.ts";
-import { canonicalizeTyVars, freshInstance, freshTyVar, generalizeTy, isTyConst, isTyVar, MonoTy, PolyTy, polyTy, resetTyVars, showMonoTy, showOverloadedTy, tyConst, TypeEnv, TyVar } from "./Types.ts";
+import { canonicalizeTyVars, freshInstance, freshTyVar, generalizeTy, isTyConst, isTyVar, MonoTy, PolyTy, polyTy, showMonoTy, tyConst, TypeEnv, TyVar } from "./Types.ts";
 import { showSubst, substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "./Unification.ts";
 
 export type TypeError = string;
-export type TypeCheckerResult = Result<[MonoTy, TypeEnv], TypeError>;
+export type TypeCheckerResult = Result<[MonoTy, TypeSubst], TypeError>;
 
 /**
  * infers the most general monomorphic type of an expression
- * @returns None if type checking failed
+ * @returns an error if type checking failed
  */
 export const inferExprType = (
     expr: CoreExpr,
     env: TypeEnv = {}
 ): TypeCheckerResult => {
     const tau = freshTyVar();
-    return bind(collectExprTypeSubsts(env, expr, tau), ([sig, gamma]) => {
-        resetTyVars();
-
+    return bind(collectExprTypeSubsts(env, expr, tau), (sig) => {
         if (sig[tau.value] === undefined) {
             return error(`unbound type variable: "${showMonoTy(tau)}" in ${showSubst(sig)}`);
         }
 
-        return bindEnv(substituteMono(sig[tau.value], sig), gamma);
+        return bind(substituteMono(sig[tau.value], sig), ty => {
+            return ok([ty, sig]);
+        });
     });
 };
 
 const checkedUnify = (
     s: MonoTy,
     t: MonoTy,
-    expr: Expr
+    expr: CoreExpr
 ): Result<TypeSubst, TypeError> => {
     const sig = unify(s, t);
 
@@ -47,7 +46,7 @@ const checkedUnify = (
         if (sig.value === 'no_rule_applies' || sig.value === 'occur_check') {
             const s_ = canonicalizeTyVars(s);
             const t_ = canonicalizeTyVars(t);
-            return error(`cannot unify ${showMonoTy(s_)} with ${showMonoTy(t_)} in expression "${showExpr(expr)}"`);
+            return error(`cannot unify ${showMonoTy(s_)} with ${showMonoTy(t_)} in expression "${showCoreExpr(expr)}"`);
         } else {
             return sig;
         }
@@ -56,37 +55,49 @@ const checkedUnify = (
     return sig;
 };
 
-const bindEnv = <T, E>(res: Result<T, E>, env: TypeEnv): Result<[T, TypeEnv], E> => {
-    return bind(res, t => ok([t, env]));
+// add identifiers to the context
+const envAdd = (env: TypeEnv, { id, name }: VarExpr, ty: PolyTy): TypeEnv => {
+    context.identifiers.set(id, [name, ty]);
+    return envAddAux(env, name, ty);
 };
 
-// TODO : Return the env as well
 const collectExprTypeSubsts = (
     env: TypeEnv,
     expr: CoreExpr,
     tau: MonoTy
-): Result<[TypeSubst, TypeEnv], TypeError> => {
+): Result<TypeSubst, TypeError> => {
     switch (expr.type) {
         case 'constant': {
             const tau_ = constantTy(expr);
             return bind(freshInstance(tau_), freshTau => {
-                return bindEnv(checkedUnify(tau, freshTau, expr), env);
+                return checkedUnify(tau, freshTau, expr);
             });
         }
         case 'variable': {
             const inEnv = envHas(env, expr.name);
-            const isDataType = typeDeclContext.datatypes.has(expr.name);
+            const isDataType = context.datatypes.has(expr.name);
+            const isTyClassMethod = context.typeClassMethods.has(expr.name);
 
-            if (!inEnv && !isDataType) {
+            if (!context.identifiers.has(expr.id)) {
+                context.identifiers.set(expr.id, [expr.name, polyTy(tau)]);
+            }
+
+            if (!(inEnv || isDataType || isTyClassMethod)) {
                 throw new Error(`unbound variable "${expr.name}"`);
             }
 
             const varTy = inEnv ?
                 envGet(env, expr.name) :
-                defined(typeDeclContext.datatypes.get(expr.name));
+                isDataType ?
+                    defined(context.datatypes.get(expr.name)) :
+                    defined(context.typeClassMethods.get(expr.name));
+
+            if (isTyClassMethod && !inEnv) {
+                context.typeClassMethodsOccs.set(expr.id, [tau, expr.name]);
+            }
 
             return bind(freshInstance(varTy), ty => {
-                return bindEnv(checkedUnify(tau, ty, expr), env);
+                return checkedUnify(tau, ty, expr);
             });
         }
         case 'binop': {
@@ -98,15 +109,15 @@ const collectExprTypeSubsts = (
             const tau1 = freshTyVar();
             const tau2 = freshTyVar();
 
-            return bind(collectExprTypeSubsts(env, expr.left, tau1), ([sig1]) => {
+            return bind(collectExprTypeSubsts(env, expr.left, tau1), sig1 => {
                 return bind(substituteEnv(env, sig1), sig1env => {
-                    return bind(collectExprTypeSubsts(sig1env, expr.right, tau2), ([sig2]) => {
+                    return bind(collectExprTypeSubsts(sig1env, expr.right, tau2), sig2 => {
                         const expTy = funTy(tau1, funTy(tau2, tau));
                         return bind(substCompose(sig2, sig1), sig => {
                             return bind(substituteMono(expTy, sig), sigExpTy => {
                                 return bind(freshInstance(tau_), freshTau => {
                                     return bind(checkedUnify(sigExpTy, freshTau, expr), sig3 => {
-                                        return bindEnv(substCompose(sig3, sig), sig1env);
+                                        return substCompose(sig3, sig)
                                     });
                                 });
                             });
@@ -116,14 +127,14 @@ const collectExprTypeSubsts = (
             });
         }
         case 'if_then_else': {
-            return bind(collectExprTypeSubsts(env, expr.cond, boolTy), ([sig1]) => {
+            return bind(collectExprTypeSubsts(env, expr.cond, boolTy), sig1 => {
                 return bind(substituteEnv(env, sig1), sig1Gamma => {
                     return bind(substituteMono(tau, sig1), sig1Tau => {
-                        return bind(collectExprTypeSubsts(sig1Gamma, expr.thenBranch, sig1Tau), ([sig2]) => {
+                        return bind(collectExprTypeSubsts(sig1Gamma, expr.thenBranch, sig1Tau), sig2 => {
                             return bind(substituteEnv(sig1Gamma, sig2), sig21Gamma => {
                                 return bind(substituteMono(sig1Tau, sig2), sig21Tau => {
-                                    return bind(collectExprTypeSubsts(sig21Gamma, expr.elseBranch, sig21Tau), ([sig3]) => {
-                                        return bindEnv(substCompose(sig3, sig2, sig1), sig21Gamma);
+                                    return bind(collectExprTypeSubsts(sig21Gamma, expr.elseBranch, sig21Tau), sig3 => {
+                                        return substCompose(sig3, sig2, sig1);
                                     });
                                 });
                             })
@@ -136,11 +147,11 @@ const collectExprTypeSubsts = (
             const tau1 = freshTyVar();
             const tau2 = freshTyVar();
             const gammaX = envAdd(env, expr.arg, polyTy(tau1));
-            return bind(collectExprTypeSubsts(gammaX, expr.body, tau2), ([sig]) => {
+            return bind(collectExprTypeSubsts(gammaX, expr.body, tau2), sig => {
                 return bind(substituteMono(funTy(tau1, tau2), sig), sigExpTy => {
                     return bind(substituteMono(tau, sig), sigTau => {
                         return bind(checkedUnify(sigTau, sigExpTy, expr), sig2 => {
-                            return bindEnv(substCompose(sig2, sig), gammaX);
+                            return substCompose(sig2, sig);
                         });
                     });
                 });
@@ -148,11 +159,11 @@ const collectExprTypeSubsts = (
         }
         case 'app': {
             const tau1 = freshTyVar();
-            return bind(collectExprTypeSubsts(env, expr.lhs, funTy(tau1, tau)), ([sig1]) => {
+            return bind(collectExprTypeSubsts(env, expr.lhs, funTy(tau1, tau)), sig1 => {
                 return bind(substituteEnv(env, sig1), sig1Gamma => {
                     return bind(substituteMono(tau1, sig1), sig1Tau1 => {
-                        return bind(collectExprTypeSubsts(sig1Gamma, expr.rhs, sig1Tau1), ([sig2]) => {
-                            return bindEnv(substCompose(sig2, sig1), sig1Gamma);
+                        return bind(collectExprTypeSubsts(sig1Gamma, expr.rhs, sig1Tau1), sig2 => {
+                            return substCompose(sig2, sig1);
                         });
                     });
                 });
@@ -160,14 +171,14 @@ const collectExprTypeSubsts = (
         }
         case 'let_in': {
             const tau1 = freshTyVar();
-            return bind(collectExprTypeSubsts(env, expr.middle, tau1), ([sig1]) => {
+            return bind(collectExprTypeSubsts(env, expr.middle, tau1), sig1 => {
                 return bind(substituteEnv(env, sig1), sig1Gamma => {
                     return bind(substituteMono(tau1, sig1), sig1Tau1 => {
                         return bind(substituteMono(tau, sig1), sig1Tau => {
-                            const sig1Tau1Gen = generalizeTy(envRem(sig1Gamma, expr.left), sig1Tau1);
+                            const sig1Tau1Gen = generalizeTy(envRem(sig1Gamma, expr.left.name), sig1Tau1);
                             const gammaX = envAdd(sig1Gamma, expr.left, sig1Tau1Gen);
-                            return bind(collectExprTypeSubsts(gammaX, expr.right, sig1Tau), ([sig2, gamma]) => {
-                                return bindEnv(substCompose(sig2, sig1), gamma);
+                            return bind(collectExprTypeSubsts(gammaX, expr.right, sig1Tau), sig2 => {
+                                return substCompose(sig2, sig1);
                             });
                         });
                     });
@@ -180,13 +191,13 @@ const collectExprTypeSubsts = (
             const fTy = funTy(tau1, tau2);
             const gammaX = envAdd(env, expr.arg, polyTy(tau1));
             const gammaF = envAdd(gammaX, expr.funName, polyTy(fTy));
-            return bind(collectExprTypeSubsts(gammaF, expr.middle, tau2), ([sig1]) => {
+            return bind(collectExprTypeSubsts(gammaF, expr.middle, tau2), sig1 => {
                 return bind(substituteEnv(env, sig1), sig1Gamma => {
                     return bind(substituteMono(fTy, sig1), sig1FTy => {
                         return bind(substituteMono(tau, sig1), sig1Tau => {
                             const gammaF = envAdd(sig1Gamma, expr.funName, generalizeTy(sig1Gamma, sig1FTy));
-                            return bind(collectExprTypeSubsts(gammaF, expr.right, sig1Tau), ([sig2, gamma]) => {
-                                return bindEnv(substCompose(sig2, sig1), gamma);
+                            return bind(collectExprTypeSubsts(gammaF, expr.right, sig1Tau), sig2 => {
+                                return substCompose(sig2, sig1);
                             });
                         });
                     });
@@ -194,8 +205,8 @@ const collectExprTypeSubsts = (
             });
         }
         case 'tyconst': {
-            if (typeDeclContext.datatypes.has(expr.name)) {
-                const constructorTy = defined(typeDeclContext.datatypes.get(expr.name));
+            if (context.datatypes.has(expr.name)) {
+                const constructorTy = defined(context.datatypes.get(expr.name));
 
                 // the type of the variant is the last type
                 // of the variant constructor
@@ -205,17 +216,17 @@ const collectExprTypeSubsts = (
                 );
 
                 return bind(variantTy, variantTy => {
-                    return bindEnv(checkedUnify(tau, variantTy, expr), env);
+                    return checkedUnify(tau, variantTy, expr);
                 });
             } else if (expr.name === '()') { // unit
-                return bindEnv(checkedUnify(tau, unitTy, expr), env);
+                return checkedUnify(tau, unitTy, expr);
             } else if (expr.name === 'tuple') { // tuples
                 const n = expr.args.length;
                 const tupleTy = tyConst('tuple', ...gen(n, freshTyVar));
 
                 return bind(checkedUnify(tupleTy, tau, expr), sig0 => {
                     const res = fold(tupleTy.args, ([sig, gamma, i], tau_i) => {
-                        return bind(collectExprTypeSubsts(gamma, expr.args[i], tau_i), ([sig_i]) => {
+                        return bind(collectExprTypeSubsts(gamma, expr.args[i], tau_i), sig_i => {
                             return bind(substituteEnv(gamma, sig_i), gamma_n => {
                                 return bind(substCompose(sig_i, sig), sig_n => {
                                     return ok([sig_n, gamma_n, i + 1] as const);
@@ -224,8 +235,8 @@ const collectExprTypeSubsts = (
                         });
                     }, [sig0, env, 0 as number] as const);
 
-                    return bind(res, ([sig, gamma]) => {
-                        return ok([sig, gamma]);
+                    return bind(res, ([sig]) => {
+                        return ok(sig);
                     });
                 });
             } else {
@@ -234,7 +245,7 @@ const collectExprTypeSubsts = (
         }
         case 'case_of': {
             const tau_e = freshTyVar();
-            return bind(collectExprTypeSubsts(env, expr.value, tau_e), ([sig_e0]) => {
+            return bind(collectExprTypeSubsts(env, expr.value, tau_e), sig_e0 => {
                 const res = bind(substituteMono(tau, sig_e0), sig_e0_tau => {
                     return bind(substituteMono(tau_e, sig_e0), sig_e0_tau_e => {
                         return fold(expr.cases, ([sig_i, tau_i, tau_e_i], { pattern: p_n, expr: e_n }) => {
@@ -244,7 +255,7 @@ const collectExprTypeSubsts = (
                                     return bind(substituteMono(tau_e_i, sig_p), sig_p_tau_e_n => {
                                         return bind(substituteEnv(envSum(env, vars), sig_p_i), gamma_vars => {
                                             return bind(substituteMono(tau_i, sig_p), sig_e_tau_i => {
-                                                return bind(collectExprTypeSubsts(gamma_vars, e_n, sig_e_tau_i), ([sig]) => {
+                                                return bind(collectExprTypeSubsts(gamma_vars, e_n, sig_e_tau_i), sig => {
                                                     return bind(substCompose(sig, sig_p_i), sig_n => {
                                                         return bind(substituteMono(sig_e_tau_i, sig), tau_n => {
                                                             return bind(substituteMono(sig_p_tau_e_n, sig), tau_e_n => {
@@ -263,20 +274,14 @@ const collectExprTypeSubsts = (
                 });
 
                 return bind(res, ([sig_n]) => {
-                    return ok([sig_n, env]);
+                    return ok(sig_n);
                 });
             });
         }
     }
 };
 
-export const registerTypeDecls = (decls: TypeDecl[]): TypeEnv => {
-    const gamma = emptyEnv<PolyTy>();
-    const ctx = typeDeclContext;
-
-    // clear the global context
-    clearTypeDeclContext();
-
+export const registerTypeDecls = (decls: TypeDecl[]): void => {
     for (const td of decls) {
         switch (td.type) {
             case 'datatype': {
@@ -292,72 +297,83 @@ export const registerTypeDecls = (decls: TypeDecl[]): TypeEnv => {
                     const realType = polyTy(tyConst(variantTy.name, ...variantTy.args), ...td.typeVars);
 
                     // add this variant to the context
-                    ctx.datatypes.set(variant.name, realType);
+                    context.datatypes.set(variant.name, realType);
                 }
                 break;
             }
             case 'typeclass': {
-                if (!ctx.typeclasses.has(td.name)) {
-                    ctx.typeclasses.set(td.name, { methods: new Map(), tyVar: td.tyVar });
+                if (!context.typeclasses.has(td.name)) {
+                    context.typeclasses.set(td.name, {
+                        methods: new Map(),
+                        tyVar: td.tyVar
+                    });
                 }
 
                 for (const [f, ty] of td.methods) {
-                    ctx.typeclasses.get(td.name)?.methods.set(f, ty);
-                    envAddMut(gamma, f, ty);
+                    context.typeclasses.get(td.name)?.methods.set(f, ty);
+                    context.typeClassMethods.set(f, ty);
                 }
 
                 break;
             }
             case 'instance': {
-                if (!ctx.instances.has(td.class_)) {
-                    ctx.instances.set(td.class_, []);
+                if (!context.instances.has(td.class_)) {
+                    context.instances.set(td.class_, []);
                 }
 
                 // add this instance to the context
-                ctx.instances.get(td.class_)?.push(td.ty.name);
+                context.instances.get(td.class_)?.push(td.ty.name);
                 break;
             }
         }
     }
-
-    return gamma;
 };
 
-export const typeCheckInstances = (instances: InstanceDecl[], env: TypeEnv): Result<Unit, string> => {
-    const ctx = typeDeclContext;
+const replaceTyVar = (ty: MonoTy, tyVar: TyVar['value'], by: MonoTy): MonoTy => {
+    if (isTyVar(ty)) {
+        if (ty.value === tyVar) return by;
+        return ty;
+    }
 
+    return tyConst(ty.name, ...ty.args.map(a => replaceTyVar(a, tyVar, by)));
+};
+
+export const instanceMethodsTypes = (inst: InstanceDecl): Result<Map<MethodName, MonoTy>, string> => {
+    const methodsTys = new Map<MethodName, MonoTy>();
+
+    for (const method of inst.defs.keys()) {
+        if (!context.typeclasses.has(inst.class_)) {
+            return error(`cannot define an instance for '${showMonoTy(inst.ty)}', type class '${inst.class_}' not found.`);
+        }
+
+        const class_ = defined(context.typeclasses.get(inst.class_));
+
+        if (!class_.methods.has(method)) {
+            return error(`'${method}' is not a valid method of type class '${inst.class_}'`);
+        }
+
+        const instMethodTy_ = defined(class_.methods.get(method));
+        const instMethodTy = replaceTyVar(instMethodTy_.ty, class_.tyVar, inst.ty);
+
+        methodsTys.set(method, instMethodTy);
+    }
+
+    return ok(methodsTys);
+};
+
+export const typeCheckInstances = (instances: InstanceDecl[]): Result<Unit, string> => {
     for (const inst of instances) {
-        for (const [method, decl] of inst.defs) {
-            const f = renameTyClassInstance(method, inst.ty, inst.class_);
+        const tys = instanceMethodsTypes(inst);
+        if (isError(tys)) return tys;
 
-            if (!ctx.typeclasses.has(inst.class_)) {
-                return error(`cannot define an instance for '${showMonoTy(inst.ty)}', type class '${inst.class_}' not found.`);
-            }
+        for (const [method, ty] of tys.value.entries()) {
+            const [tyVar] = defined(inst.defs.get(method));
+            const [_, inferedTy] = defined(context.identifiers.get(tyVar));
 
-            const class_ = defined(ctx.typeclasses.get(inst.class_));
-
-            if (!class_.methods.has(method)) {
-                return error(`'${method}' is not a valid method of type class '${inst.class_}'`);
-            }
-
-            const replaceTyVar = (ty: MonoTy, tyVar: TyVar['value'], by: MonoTy): MonoTy => {
-                if (isTyVar(ty)) {
-                    if (ty.value === tyVar) return by;
-                    return ty;
-                }
-
-                return tyConst(ty.name, ...ty.args.map(a => replaceTyVar(a, tyVar, by)));
-            };
-
-            const expectedTy_ = defined(class_.methods.get(method));
-            const expectedTy = replaceTyVar(expectedTy_.ty, class_.tyVar, inst.ty);
-
-            const inferedTy = envGet(env, f);
-
-            const res = checkedUnify(expectedTy, inferedTy.ty, decl.body);
+            const res = unify(ty, inferedTy.ty);
 
             if (isError(res)) {
-                return error(`invalid type for method '${method}' of type class '${inst.class_}'\n${res.value}'`);
+                return error(`invalid type for method '${method}' of type class '${inst.class_}'`);
             }
         }
     }
