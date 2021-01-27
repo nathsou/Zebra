@@ -1,14 +1,14 @@
 import { context } from "../Inferencer/Context.ts";
 import { instanceMethodsTypes } from "../Inferencer/Inferencer.ts";
-import { expandTy, isTyOverloaded, MonoTy, showMonoTy } from "../Inferencer/Types.ts";
-import { substituteMono, TypeSubst, unify } from "../Inferencer/Unification.ts";
+import { canonicalizeTyVars, expandTy, isTyOverloaded, MonoTy, showMonoTy, showOverloadedTy } from "../Inferencer/Types.ts";
+import { directedUnify, showSubst, substCompose, substituteMono, TypeSubst, unify } from "../Inferencer/Unification.ts";
 import { DataTypeDecl, InstanceDecl } from "../Parser/Decl.ts";
 import { VarExpr, varOf } from "../Parser/Expr.ts";
 import { lambdaOf } from "../Parser/Sugar.ts";
 import { defined } from "../Utils/Common.ts";
 import { bind, bind2, bind3, error, isError, isOk, ok, reduceResult, Result, Unit } from "../Utils/Result.ts";
 import { CoreDecl, CoreFuncDecl } from "./CoreDecl.ts";
-import { CoreExpr } from "./CoreExpr.ts";
+import { CoreExpr, showCoreExpr } from "./CoreExpr.ts";
 
 type ResolutionEnv = Map<string, [MonoTy, CoreExpr][]>;
 
@@ -104,7 +104,7 @@ const monomorphizeFunDecl = (
     renv: ResolutionEnv
 ): Result<CoreFuncDecl[], string> => {
     const overloaded = isTyOverloaded(ty);
-    if (overloaded) {
+    if (overloaded && f.funName.name !== 'main') {
         addMapping(f.funName.name, ty, f.args.length > 0 ? lambdaOf(f.args, f.body) : f.body, renv);
         return ok([]);
     } else {
@@ -130,16 +130,26 @@ const findReplacement = (
     }
 
     for (const [tau, expr] of renv.get(f) ?? []) {
-        if (isOk(unify(ty, tau))) {
+        const sigTy = substituteMono(ty, sig);
+        if (isError(sigTy)) return sigTy;
+
+        const sigTau = substituteMono(tau, sig);
+        if (isError(sigTau)) return sigTau;
+
+        const sig2 = directedUnify(sigTau.value, sigTy.value);
+
+        if (isOk(sig2)) {
             specializations.set(key, expr);
-            return bind(monomorphizeExpr(expr, sig, renv), rep => {
-                specializations.set(key, rep);
-                return ok(rep);
+            return bind(substCompose(sig2.value, sig), sig21 => {
+                return bind(monomorphizeExpr(expr, sig21, renv), rep => {
+                    specializations.set(key, rep);
+                    return ok(varOf(key));
+                });
             });
         }
     }
 
-    return error(`no replacement found for '${f}' with type '${showMonoTy(ty)}'`);
+    return error(`no replacement found for '${f}' with type '${showMonoTy(canonicalizeTyVars(ty))}'`);
 };
 
 const identifierType = (v: VarExpr, sig: TypeSubst): Result<MonoTy, string> => {

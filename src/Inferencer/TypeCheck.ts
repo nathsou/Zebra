@@ -11,7 +11,7 @@ import { bind, error, ok, Result } from "../Utils/Result.ts";
 import { clearContext } from "./Context.ts";
 import { inferExprType, registerTypeDecls, typeCheckInstances } from "./Inferencer.ts";
 import { canonicalizeTyVars, MonoTy } from "./Types.ts";
-import { TypeSubst } from "./Unification.ts";
+import { substCompose, TypeSubst } from "./Unification.ts";
 
 const wrapMain = (main: CoreExpr, name: VarExpr): CoreLetInExpr => {
     return {
@@ -24,7 +24,9 @@ const wrapMain = (main: CoreExpr, name: VarExpr): CoreLetInExpr => {
 
 const reorderFuncs = (funcs: CoreFuncDecl[], order: string[]): CoreFuncDecl[] => {
     const funcsByName = new Map(funcs.map(d => [d.funName.name, d]));
-    const reordered = order.map(f => defined(funcsByName.get(f)));
+    const reordered = order
+        .filter(f => funcsByName.has(f))
+        .map(f => defined(funcsByName.get(f)));
 
     return reordered;
 };
@@ -33,7 +35,6 @@ export const typeCheck = (prog: Decl[]): Result<{
     ty: MonoTy,
     main: CoreFuncDecl,
     coreProg: CoreDecl[],
-    singleExprProg: CoreExpr,
     decls: PartitionedDecls,
     sig: TypeSubst
 }, string> => {
@@ -63,19 +64,21 @@ export const typeCheck = (prog: Decl[]): Result<{
     // initialize the context
     registerTypeDecls(typeDecls);
 
-    return bind(inferExprType(wrapMain(singleExprProg, main.funName)), ([ty, sig]) => {
-        return bind(typeCheckInstances(decls.instanceDecls), () => {
-            return bind(monomorphizeProg(coreProg, sig), mono => {
-                const deps = funcDeclsDependencies(mono, decls.dataTypeDecls);
-                const reorderd = reorderFuncs(mono, [...usedFuncDecls('main', deps)].reverse());
+    return bind(inferExprType(wrapMain(singleExprProg, main.funName)), ([ty, sig1]) => {
+        return bind(typeCheckInstances(decls.instanceDecls), sig2 => {
+            return bind(substCompose(sig1, sig2), sig12 => {
+                return bind(monomorphizeProg(coreProg, sig12), mono => {
+                    const deps = funcDeclsDependencies(mono, decls.dataTypeDecls);
+                    const reorderd = reorderFuncs(mono, [...usedFuncDecls('main', deps)].reverse());
 
-                return ok({
-                    ty: canonicalizeTyVars(ty),
-                    main,
-                    coreProg: [...decls.dataTypeDecls, ...reorderd],
-                    singleExprProg,
-                    decls,
-                    sig
+                    return ok({
+                        ty: canonicalizeTyVars(ty),
+                        main: defined(find(mono, f => f.funName.name === 'main')),
+                        coreProg: [...decls.dataTypeDecls, ...reorderd],
+                        singleExprProg,
+                        decls,
+                        sig: sig12
+                    });
                 });
             });
         });

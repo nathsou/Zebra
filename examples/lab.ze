@@ -3,24 +3,26 @@ data Bool = True | False;
 data List a = Nil | Cons a (List a);
 data Nat = S Nat | Zero;
 
-class Eq a where
-    eq : a -> a -> Bool;
-
 class Show a where
     show : a -> List Char;
+
+instance Show Char where
+    show c = [c];
 
 instance Show Bool where
     show True = "True",
     show False = "False";
 
+instance Show (List Char) where
+    show str = str;
+
+instance (Show a) => Show (List a) where
+    show [] = "[]",
+    show lst = flatten ["[", join "," (map show lst), "]"];
+
 instance Show Nat where
     show Zero = "0",
     show (S prev) = flatten ["S(", show prev, ")"];
-
--- instance Eq Nat where
---     eq Zero Zero = True,
---     eq (S a) (S b) = eq a b,
---     eq _ _ = False;
 
 map _ [] = [];
 map f h::tl = (f h)::(map f tl);
@@ -41,12 +43,13 @@ intercalate sep h::tl = h::sep::(intercalate sep tl);
 
 join sep lst = flatten (intercalate sep lst);
 
-instance (Show a) => Show (List a) where
-    show [] = "[]",
-    show lst = flatten ["[", join "," (map show lst), "]"];
-
 not False = True;
 not True = False;
+
+class Eq a where
+    eq : a -> a -> Bool;
+
+neq x y = not (eq x y);
 
 instance Eq Bool where
     eq True True = True,
@@ -55,17 +58,23 @@ instance Eq Bool where
 
 instance (Eq a) => Eq (List a) where
     eq [] [] = True,
-    -- FIXME: ajouter une fun decl pour chaque couple (method, type)
     eq a::as b::bs = if eq a b then eq as bs else False,
     eq _ _ = False;
+
+instance Eq Nat where
+    eq Zero Zero = True,
+    eq (S a) (S b) = eq a b,
+    eq _ _ = False;
+
+instance Eq Char where
+    eq c1 c2 = c1 == c2;
+
+instance Eq Int where
+    eq n m = n == m;
 
 any _ [] = False;
 any pred x::xs = if pred x then True else any pred xs;
 
--- elem : (a -> Bool) -> List a -> Bool;
 elem x = any (\y -> eq x y);
 
-instance Show Char where
-    show c = [c];
-
-main = eq [False, True] [False, True];
+main = show (eq [1, 2, 3] [1, 2, 5]);

@@ -2,7 +2,7 @@ import { defined, sameElems } from "../Utils/Common.ts";
 import { envMapRes } from "../Utils/Env.ts";
 import { bind, error, isError, ok, reduceResult, Result, Unit } from "../Utils/Result.ts";
 import { context } from "./Context.ts";
-import { isTyVar, MonoTy, monoTypesEq, polyTy, PolyTy, showMonoTy, showTyVar, TyConst, tyConst, TypeEnv, tyVar, TyVar } from "./Types.ts";
+import { isTyConst, isTyVar, MonoTy, monoTypesEq, polyTy, PolyTy, showMonoTy, showTyVar, TyConst, tyConst, TypeEnv, tyVar, TyVar } from "./Types.ts";
 
 export type TypeSubst = Record<TyVar['value'], MonoTy>;
 
@@ -11,6 +11,13 @@ export const unify = (
     t: MonoTy
 ): Result<TypeSubst, string> => {
     return unifyMany([[s, t]]);
+};
+
+export const directedUnify = (
+    s: MonoTy,
+    t: MonoTy
+): Result<TypeSubst, string> => {
+    return unifyMany([[s, t]], true);
 };
 
 // https://www.researchgate.net/publication/2683816_Implementing_Type_Classes
@@ -192,7 +199,8 @@ const occurs = (x: TyVar, t: MonoTy): boolean => {
 };
 
 const unifyMany = (
-    eqs: Array<[MonoTy, MonoTy]>
+    eqs: Array<[MonoTy, MonoTy]>,
+    directed = false
 ): Result<TypeSubst, string> => {
     const sig: TypeSubst = {};
 
@@ -226,12 +234,13 @@ const unifyMany = (
             }
         }
 
-        if (isTyVar(t)) { // Orient
+        if (!directed && isTyVar(t)) { // Orient
             eqs.push([t, s]);
             continue;
         }
 
         if ( // Decompose
+            isTyConst(s) && isTyConst(t) &&
             s.name === t.name &&
             s.args.length == t.args.length
         ) {

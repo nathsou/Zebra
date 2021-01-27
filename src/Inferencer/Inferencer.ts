@@ -6,7 +6,7 @@ import { VarExpr } from "../Parser/Expr.ts";
 import { defined, gen } from "../Utils/Common.ts";
 import { envAdd as envAddAux, envGet, envHas, envRem, envSum } from "../Utils/Env.ts";
 import { isNone } from "../Utils/Maybe.ts";
-import { bind, error, fold, isError, ok, Result, Unit } from "../Utils/Result.ts";
+import { bind, error, fold, isError, isOk, ok, Result } from "../Utils/Result.ts";
 import { context, MethodName } from "./Context.ts";
 import { binopTy, boolTy, constantTy, funReturnTy, funTy, unitTy } from "./FixedTypes.ts";
 import { canonicalizeTyVars, freshInstance, freshTyVar, generalizeTy, isTyConst, isTyVar, MonoTy, PolyTy, polyTy, showMonoTy, tyConst, TypeEnv, TyVar } from "./Types.ts";
@@ -361,22 +361,35 @@ export const instanceMethodsTypes = (inst: InstanceDecl): Result<Map<MethodName,
     return ok(methodsTys);
 };
 
-export const typeCheckInstances = (instances: InstanceDecl[]): Result<Unit, string> => {
+export const typeCheckInstances = (instances: InstanceDecl[]): Result<TypeSubst, string> => {
+    let subst: TypeSubst = {};
+
     for (const inst of instances) {
         const tys = instanceMethodsTypes(inst);
         if (isError(tys)) return tys;
 
         for (const [method, ty] of tys.value.entries()) {
+            if (!inst.defs.has(method)) {
+                return error(`type class instance for '${inst.class_} ${showMonoTy(ty)}' is missing method '${method}'`);
+            }
             const [tyVar] = defined(inst.defs.get(method));
             const [_, inferedTy] = defined(context.identifiers.get(tyVar));
 
-            const res = unify(ty, inferedTy.ty);
+            const sig = unify(ty, inferedTy.ty);
 
-            if (isError(res)) {
+            if (isError(sig)) {
                 return error(`invalid type for method '${method}' of type class '${inst.class_}'`);
+            }
+
+            const subst_ = substCompose(subst, sig.value);
+
+            if (isOk(subst_)) {
+                subst = subst_.value;
+            } else {
+                return subst_;
             }
         }
     }
 
-    return ok('()');
+    return ok(subst);
 };
