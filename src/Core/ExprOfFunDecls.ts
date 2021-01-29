@@ -1,5 +1,6 @@
 import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
-import { expandTy, isTyVar, MonoTy, TyConst } from "../Inferencer/Types.ts";
+import { primitives } from "../Inferencer/Primitives.ts";
+import { expandTy, MonoTy } from "../Inferencer/Types.ts";
 import { vars } from "../Interpreter/Pattern.ts";
 import { DataTypeDecl, InstanceDecl } from "../Parser/Decl.ts";
 import { VarExpr, varOf } from "../Parser/Expr.ts";
@@ -15,7 +16,7 @@ type Dependencies = Graph<string>;
 
 export const renameTyClassInstance = (
     method: string,
-    ty: TyConst,
+    ty: MonoTy,
     class_: string
 ): string => {
     return `${class_}_${expandTy(ty).join('_')}_${method}`;
@@ -413,7 +414,7 @@ export const funcDeclsDependencies = (
     funDecls: CoreFuncDecl[],
     dataTypeDecls: DataTypeDecl[]
 ): Dependencies => {
-    const env = varEnvOf(...dataTypeVariants(dataTypeDecls));
+    const env = varEnvOf(...envBoundVars(dataTypeDecls));
 
     const deps = new Map<string, Set<string>>();
 
@@ -425,24 +426,32 @@ export const funcDeclsDependencies = (
     return deps;
 };
 
-const dataTypeVariants = (dataTypeDecl: DataTypeDecl[]): string[] => {
-    const variants: string[] = [];
+const envBoundVars = (dataTypeDecl: DataTypeDecl[]): string[] => {
+    const boundVars: string[] = [];
 
     for (const dt of dataTypeDecl) {
         for (const variant of dt.variants) {
-            variants.push(variant.name);
+            boundVars.push(variant.name);
         }
     }
 
-    return variants;
+    boundVars.push(...primitives.keys());
+
+    return boundVars;
 };
 
 const isFunDeclRecursive = (f: CoreFuncDecl): boolean => {
-    return coreExprFreeVars(f.body, varEnvOf(...f.args.map(v => v.name))).has(f.funName.name);
+    return coreExprFreeVars(
+        f.body,
+        varEnvOf(...f.args.map(v => v.name))
+    ).has(f.funName.name);
 };
 
 export const coreFunDeclFreeVars = (f: CoreFuncDecl, env: VarEnv) => {
-    return coreExprFreeVars(f.body, addEnv(env, f.funName.name, ...f.args.map(v => v.name)));
+    return coreExprFreeVars(
+        f.body,
+        addEnv(env, f.funName.name, ...f.args.map(v => v.name))
+    );
 };
 
 export const coreExprFreeVars = (
@@ -468,11 +477,6 @@ export const coreExprFreeVars = (
             const env2 = addEnv(env, e.funName.name, e.arg.name);
             coreExprFreeVars(e.middle, env2, freeVars);
             coreExprFreeVars(e.right, env2, freeVars);
-            break;
-        }
-        case 'binop': {
-            coreExprFreeVars(e.left, env, freeVars);
-            coreExprFreeVars(e.right, env, freeVars);
             break;
         }
         case 'app': {

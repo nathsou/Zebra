@@ -10,7 +10,7 @@ import { error, okOrThrow } from "../Utils/Result.ts";
 import { alt, brackets, commas, keyword, leftassoc, many, map, maybeParens, oneOf, optional, parens, Parser, ParserRef, sepBy, seq, some, symbol, token } from "./Combinators.ts";
 import { Decl, FuncDecl, TypeClassDecl } from "./Decl.ts";
 import { CaseOfExpr, CaseOfExprCase, CharExpr, ConstantExpr, Expr, FloatExpr, IntegerExpr, TyConstExpr, VarExpr, varOf } from "./Expr.ts";
-import { lambdaOf, listOf } from "./Sugar.ts";
+import { appOf, lambdaOf, listOf } from "./Sugar.ts";
 
 // https://www.haskell.org/onlinereport/syntax-iso.html
 
@@ -43,7 +43,12 @@ const constant: Parser<ConstantExpr> = oneOf(integer, char, float);
 const string: Parser<Expr> = map(token('string'), ({ value }) =>
     listOf(value.split('').map(charOf)));
 
-const variable: Parser<VarExpr> = map(token('variable'), ({ name }) => varOf(name));
+const symbolVariable: Parser<VarExpr> = map(parens(token('symbol')), ({ name }) => varOf(name));
+
+const variable: Parser<VarExpr> = alt(
+    map(token('variable'), ({ name }) => varOf(name)),
+    symbolVariable
+);
 
 const identifier: Parser<VarExpr> = map(token('identifier'), ({ name }) => varOf(name));
 
@@ -69,13 +74,13 @@ const atomic: Parser<Expr> = oneOf(parens(expr), constant, variable, identifier,
 const factor: Parser<Expr> = leftassoc(
     atomic,
     seq(oneOf(symbol('*'), symbol('/'), symbol('%')), atomic),
-    (left, [op, right]) => ({ type: 'binop', operator: op.name, left, right })
+    (left, [op, right]) => appOf(varOf(op.name), left, right)
 );
 
 const term: Parser<Expr> = leftassoc(
     factor,
     seq(oneOf(symbol('+'), symbol('-')), factor),
-    (left, [op, right]) => ({ type: 'binop', operator: op.name, left, right })
+    (left, [op, right]) => appOf(varOf(op.name), left, right)
 );
 
 const app: Parser<Expr> = leftassoc(
@@ -101,8 +106,16 @@ cons.ref = alt(map(
 
 const comparison: Parser<Expr> = leftassoc(
     cons,
-    seq(oneOf(symbol('=='), symbol('<'), symbol('<='), symbol('>'), symbol('>=')), app),
-    (left, [op, right]) => ({ type: 'binop', operator: op.name, left, right })
+    seq(oneOf(
+        symbol('=='),
+        symbol('/='),
+        symbol('<'),
+        symbol('<='),
+        symbol('>'),
+        symbol('>='),
+        symbol('++')
+    ), app),
+    (left, [op, right]) => appOf(varOf(op.name), left, right)
 );
 
 const ifThenElse: Parser<Expr> = alt(map(
@@ -153,18 +166,18 @@ expr.ref = lambda;
 // function declarations
 
 const funDecl: Parser<Decl> = map(
-    seq(token('variable'), some(pattern), symbol('='), expr),
+    seq(variable, some(pattern), symbol('='), expr),
     ([f, args, _eq, body]) => ({
         type: 'fun',
-        funName: varOf(f.name),
+        funName: f,
         args,
         body: body
     })
 );
 
-const tyVarNames = typeVarNamer();
+const { name: tyNamer, reset: resetTyNamer } = typeVarNamer();
 
-const typeVar: Parser<TyVar> = map(token('variable'), ({ name }) => tyVarNames(name));
+const typeVar: Parser<TyVar> = map(token('variable'), ({ name }) => tyNamer(name));
 
 let type: ParserRef<MonoTy> = dummyBeforeInit();
 
@@ -207,7 +220,7 @@ const dataTypeDecl: Parser<Decl> = alt(map(
     ),
     ([_dt, f, typeVars, _eq, _, variants]) => ({
         type: 'datatype',
-        typeVars: typeVars.map(tv => tyVarNames(tv.name)),
+        typeVars: typeVars.map(tv => tyNamer(tv.name)),
         name: f.name,
         variants
     })
@@ -221,7 +234,7 @@ const context: Parser<TyClass[]> = map(
 );
 
 const typeAnnotation: Parser<[string, PolyTy]> = map(
-    seq(token('variable'), token('colon'), type),
+    seq(variable, token('colon'), type),
     ([{ name }, _, ty]) => [name, polyTy(ty, ...freeVarsMonoTy(ty))]
 );
 
@@ -231,6 +244,8 @@ const typeClassDeclOf = (
     tyVar: TyVar['value'],
     methods: [string, PolyTy][]
 ): TypeClassDecl => {
+    resetTyNamer();
+
     return {
         type: 'typeclass',
         context,
@@ -285,16 +300,21 @@ const typeClassDecl: Parser<Decl> = alt(map(
 
 // type class instance delcarations
 
+const resetTyNamerAux = <T>(v: T) => {
+    resetTyNamer();
+    return v;
+};
+
 const instanceDecl: Parser<Decl> = alt(map(
     seq(
         keyword("instance"),
         optional(seq(context, token('bigarrow'))),
         token('identifier'),
-        typeConst,
+        type,
         keyword('where'),
         sepBy(funDecl, 'comma')
     ),
-    ([_inst, ctx, { name }, ty, _where, defs]) => ({
+    ([_inst, ctx, { name }, ty, _where, defs]) => resetTyNamerAux({
         type: 'instance',
         context: mapOrDefault(ctx, ([classes]) => classes, []),
         class_: name,

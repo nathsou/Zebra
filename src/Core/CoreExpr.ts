@@ -1,7 +1,7 @@
 import { Pattern, patVarOfVar, showPattern } from "../Interpreter/Pattern.ts";
 import { Expr, VarExpr } from "../Parser/Expr.ts";
 
-export type CoreExpr = CoreAtomicExpr | CoreAppExpr | CoreIfThenElseExpr | CoreBinopExpr
+export type CoreExpr = CoreAtomicExpr | CoreAppExpr | CoreIfThenElseExpr
     | CoreCaseOfExpr | CoreLambdaExpr | CoreLetInExpr | CoreLetRecInExpr;
 
 export type CoreLambdaExpr = {
@@ -80,13 +80,6 @@ export type CoreAppExpr = {
 
 export type CoreAtomicExpr = CoreConstantExpr | CoreVarExpr | CoreTyConstExpr;
 
-export type CoreBinopExpr = {
-    type: 'binop',
-    operator: string,
-    left: CoreExpr,
-    right: CoreExpr
-};
-
 export const showCoreExpr = (e: CoreExpr): string => {
     switch (e.type) {
         case 'variable':
@@ -100,8 +93,6 @@ export const showCoreExpr = (e: CoreExpr): string => {
                 case 'char':
                     return `'${e.value}'`;
             }
-        case 'binop':
-            return `(${showCoreExpr(e.left)} ${e.operator} ${showCoreExpr(e.right)})`;
         case 'let_in':
             return `let ${e.left.name} = ${showCoreExpr(e.middle)} in ${showCoreExpr(e.right)}`;
         case 'let_rec_in':
@@ -137,13 +128,6 @@ export const exprOfCore = (e: CoreExpr): Expr => {
                 type: 'app',
                 lhs: exprOfCore(e.lhs),
                 rhs: exprOfCore(e.rhs)
-            };
-        case 'binop':
-            return {
-                type: 'binop',
-                operator: e.operator,
-                left: exprOfCore(e.left),
-                right: exprOfCore(e.right)
             };
         case 'case_of':
             return {

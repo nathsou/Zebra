@@ -26,6 +26,46 @@ data Value =
     ClosureVal (List Char) Expr (List (List Char, Value)) |
     ClosureRecVal (List Char) (List Char) Expr (List (List Char, Value));
 
+class Eq a where
+    (==) : a -> a -> Bool;
+
+instance Eq Int where
+    (==) = eqInt;
+
+instance Eq Char where
+    (==) = eqChar;
+
+instance (Eq a) => Eq (List a) where
+    (==) [] [] = True,
+    (==) a::as b::bs = if a == b then as == bs else False,
+    (==) _ _ = False;
+
+class Num a where
+    (-) : a -> a -> a,
+    (+) : a -> a -> a,
+    (/) : a -> a -> a,
+    (*) : a -> a -> a,
+    (%) : a -> a -> a;
+
+instance Num Int where
+    (+) = plusInt,
+    (-) = minusInt,
+    (*) = timesInt,
+    (/) = divideInt,
+    (%) = modInt;
+
+class Ord b where
+    (<) : a -> a -> Bool,
+    (<=) : a -> a -> Bool,
+    (>) : a -> a -> Bool,
+    (>=) : a -> a -> Bool;
+
+instance Ord Int where
+    (<) = lssInt,
+    (<=) = leqInt,
+    (>) = gtrInt,
+    (>=) = geqInt;
+
 intOf (IntVal n) = n;
 boolOf (BoolVal q) = q;
 
@@ -60,16 +100,17 @@ closureOf v = v;
 eval (Const v) _ = v;
 eval (MonOp Neg n) env = IntVal (0 - (intOf (eval n env)));
 eval (MonOp Not q) env = BoolVal (not (boolOf (eval q env)));
-eval (BinOp Plus a b) env = intBinOp (\n m -> n + m) a b env;
-eval (BinOp Minus a b) env = intBinOp (\n m -> n - m) a b env;
-eval (BinOp Times a b) env = intBinOp (\n m -> n * m) a b env;
-eval (BinOp Divide a b) env = intBinOp (\n m -> n / m) a b env;
-eval (BinOp Modulo a b) env = intBinOp (\n m -> n % m) a b env;
-eval (BinOp Lss a b) env = boolBinOp (\n m -> n < m) a b env;
-eval (BinOp Leq a b) env = boolBinOp (\n m -> n <= m) a b env;
-eval (BinOp Gtr a b) env = boolBinOp (\n m -> n > m) a b env;
-eval (BinOp Geq a b) env = boolBinOp (\n m -> n >= m) a b env;
-eval (BinOp Eq a b) env = boolBinOp (\n m -> n == m) a b env;
+eval (BinOp Plus a b) env = intBinOp (+) a b env;
+eval (BinOp Minus a b) env = intBinOp (-) a b env;
+eval (BinOp Times a b) env = intBinOp (*) a b env;
+eval (BinOp Divide a b) env = intBinOp (/) a b env;
+eval (BinOp Modulo a b) env = intBinOp (%) a b env;
+-- FIXME: (<) should work { ε14 : Int }
+eval (BinOp Lss a b) env = boolBinOp (lssInt) a b env;
+eval (BinOp Leq a b) env = boolBinOp (<=) a b env;
+eval (BinOp Gtr a b) env = boolBinOp (>) a b env;
+eval (BinOp Geq a b) env = boolBinOp (>=) a b env;
+eval (BinOp Eq a b) env = boolBinOp (==) a b env;
 eval (BinOp Neq a b) env = boolBinOp (\n m -> not (n == m)) a b env;
 eval (BinOp And a b) env = logicalBinOp and a b env;
 eval (BinOp Or a b) env = logicalBinOp or a b env;

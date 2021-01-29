@@ -3,7 +3,6 @@ import { Pattern, showPattern } from "../Interpreter/Pattern.ts";
 
 export type Expr =
     AtomicExpr |
-    BinopExpr |
     LetInExpr |
     LetRecInExpr |
     LambdaExpr |
@@ -91,13 +90,6 @@ export type AppExpr = {
 
 export type AtomicExpr = ConstantExpr | VarExpr | TyConstExpr;
 
-export type BinopExpr = {
-    type: 'binop',
-    operator: string,
-    left: Expr,
-    right: Expr
-};
-
 export type CaseOfExprCase = {
     pattern: Pattern,
     expr: Expr
@@ -123,8 +115,6 @@ export const showExpr = (expr: Expr): string => {
                 case 'char':
                     return `'${expr.value}'`;
             }
-        case 'binop':
-            return `(${showExpr(expr.left)} ${expr.operator} ${showExpr(expr.right)})`;
         case 'let_in':
             return `let ${showPattern(expr.left)} = ${showExpr(expr.middle)} in ${showExpr(expr.right)}`;
         case 'let_rec_in':

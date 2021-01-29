@@ -1,5 +1,5 @@
 import { assert, assertEquals } from "https://deno.land/std@0.83.0/testing/asserts.ts";
-import { Maybe, None } from "./Maybe.ts";
+import { isNone, Maybe, None } from "./Maybe.ts";
 
 export const partition = <T>(vals: T[], pred: (v: T) => boolean): [T[], T[]] => {
     const as: T[] = [];
@@ -200,4 +200,26 @@ export const sameElems = <T>(a: T[], b: T[]): boolean => {
     }
 
     return true;
+};
+
+export const mapOf = <T>(obj: { [key: string]: T }): Map<string, T> => {
+    const map = new Map<string, T>();
+
+    for (const [key, val] of Object.entries(obj)) {
+        map.set(key, val);
+    }
+
+    return map;
+};
+
+export const cache = <T>(f: () => T): () => T => {
+    let cachedVal: Maybe<T> = None;
+
+    return () => {
+        if (isNone(cachedVal)) {
+            cachedVal = f();
+        }
+
+        return cachedVal;
+    };
 };

@@ -10,14 +10,6 @@ export const renameVars = (e: Expr, renameMap: { [x: string]: string }): Expr =>
             }
         case 'constant':
             return e;
-        case 'binop': {
-            return {
-                type: 'binop',
-                operator: e.operator,
-                left: renameVars(e.left, renameMap),
-                right: renameVars(e.right, renameMap)
-            };
-        }
         case 'tyconst': {
             return {
                 type: 'tyconst',

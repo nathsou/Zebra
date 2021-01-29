@@ -1,5 +1,6 @@
 
 data Bool = True | False;
+data Maybe a = None | Some a;
 data List a = Nil | Cons a (List a);
 data Nat = S Nat | Zero;
 
@@ -21,17 +22,27 @@ instance (Show a) => Show (List a) where
     show lst = flatten ["[", join "," (map show lst), "]"];
 
 instance Show Nat where
-    show Zero = "0",
+    show Zero = "Zero",
     show (S prev) = flatten ["S(", show prev, ")"];
+
+instance (Show a) => Show (Maybe a) where
+    show None = "None",
+    show (Some x) = "Some " ++ (show x);
+
+instance Show Int where
+    show = stringOfInt;
+
+instance Show Float where
+    show = stringOfFloat;
 
 map _ [] = [];
 map f h::tl = (f h)::(map f tl);
 
-prepend as [] = as;
-prepend [] bs = bs;
-prepend a::as bs = a :: (prepend as bs);
+(++) as [] = as;
+(++) [] bs = bs;
+(++) a::as bs = a :: (as ++ bs);
 
-append as bs = prepend bs as;
+append as bs = bs ++ as;
 
 flatten lists = flatten' lists [];
 flatten' [] acc = acc;
@@ -47,34 +58,64 @@ not False = True;
 not True = False;
 
 class Eq a where
-    eq : a -> a -> Bool;
+    (==) : a -> a -> Bool;
 
-neq x y = not (eq x y);
-
-instance Eq Bool where
-    eq True True = True,
-    eq False False = True,
-    eq _ _ = False;
-
-instance (Eq a) => Eq (List a) where
-    eq [] [] = True,
-    eq a::as b::bs = if eq a b then eq as bs else False,
-    eq _ _ = False;
-
-instance Eq Nat where
-    eq Zero Zero = True,
-    eq (S a) (S b) = eq a b,
-    eq _ _ = False;
-
-instance Eq Char where
-    eq c1 c2 = c1 == c2;
+(/=) x y = not (x == y);
 
 instance Eq Int where
-    eq n m = n == m;
+    (==) = eqInt;
+
+instance Eq Nat where
+    (==) Zero Zero = True,
+    (==) (S a) (S b) = a == b,
+    (==) _ _ = False;
+
+instance Eq Bool where
+    (==) True True = True,
+    (==) False False = True,
+    (==) _ _ = False;
+
+instance (Eq a) => Eq (List a) where
+    (==) [] [] = True,
+    (==) a::as b::bs = if a == b then as == bs else False,
+    (==) _ _ = False;
+
+class Num a where
+    (+) : a -> a -> a,
+    (*) : a -> a -> a,
+    fromInt : Int -> a;
+
+instance Num Int where
+    (+) = plusInt,
+    (*) = timesInt,
+    fromInt n = n;
+
+instance Num Float where
+    (+) = plusFloat,
+    (*) = timesFloat,
+    fromInt = floatOfInt;
+
+instance Num Nat where
+    (+) a Zero = a,
+    (+) Zero b = b,
+    (+) (S a) b = S (a + b),
+    (+) a (S b) = S (a + b),
+
+    (*) _ Zero = Zero,
+    (*) Zero _ = Zero,
+    (*) (S a) b = (a * b) + b,
+    (*) a (S b) = (a * b) + a,
+
+    fromInt 0 = Zero,
+    fromInt n = S (fromInt (minusInt n 1));
 
 any _ [] = False;
 any pred x::xs = if pred x then True else any pred xs;
 
-elem x = any (\y -> eq x y);
+elem x = any (\y -> x == y);
 
-main = show (eq [1, 2, 3] [1, 2, 5]);
+range n = range' n [];
+range' 0 acc = acc;
+range' n acc = range' (minusInt n 1) (n::acc);
+
+main = 3 * 7 + 2;

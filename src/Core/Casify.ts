@@ -181,14 +181,6 @@ export const coreOf = (e: Expr): CoreExpr => {
                 args: e.args.map(coreOf)
             };
         }
-        case 'binop': {
-            return {
-                type: 'binop',
-                operator: e.operator,
-                left: coreOf(e.left),
-                right: coreOf(e.right)
-            };
-        }
         case 'if_then_else': {
             return {
                 type: 'if_then_else',

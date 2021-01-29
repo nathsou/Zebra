@@ -5,10 +5,9 @@ import { InstanceDecl, TypeDecl } from "../Parser/Decl.ts";
 import { VarExpr } from "../Parser/Expr.ts";
 import { defined, gen } from "../Utils/Common.ts";
 import { envAdd as envAddAux, envGet, envHas, envRem, envSum } from "../Utils/Env.ts";
-import { isNone } from "../Utils/Maybe.ts";
 import { bind, error, fold, isError, isOk, ok, Result } from "../Utils/Result.ts";
 import { context, MethodName } from "./Context.ts";
-import { binopTy, boolTy, constantTy, funReturnTy, funTy, unitTy } from "./FixedTypes.ts";
+import { boolTy, constantTy, funReturnTy, funTy, unitTy } from "./FixedTypes.ts";
 import { canonicalizeTyVars, freshInstance, freshTyVar, generalizeTy, isTyConst, isTyVar, MonoTy, PolyTy, polyTy, showMonoTy, tyConst, TypeEnv, TyVar } from "./Types.ts";
 import { showSubst, substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "./Unification.ts";
 
@@ -83,7 +82,7 @@ const collectExprTypeSubsts = (
             }
 
             if (!(inEnv || isDataType || isTyClassMethod)) {
-                throw new Error(`unbound variable "${expr.name}"`);
+                return error(`unbound variable "${expr.name}"`);
             }
 
             const varTy = inEnv ?
@@ -98,32 +97,6 @@ const collectExprTypeSubsts = (
 
             return bind(freshInstance(varTy), ty => {
                 return checkedUnify(tau, ty, expr);
-            });
-        }
-        case 'binop': {
-            const tau_ = binopTy(expr.operator);
-            if (isNone(tau_)) {
-                throw new Error(`unknown binary operator "${expr.operator}"`);
-            }
-
-            const tau1 = freshTyVar();
-            const tau2 = freshTyVar();
-
-            return bind(collectExprTypeSubsts(env, expr.left, tau1), sig1 => {
-                return bind(substituteEnv(env, sig1), sig1env => {
-                    return bind(collectExprTypeSubsts(sig1env, expr.right, tau2), sig2 => {
-                        const expTy = funTy(tau1, funTy(tau2, tau));
-                        return bind(substCompose(sig2, sig1), sig => {
-                            return bind(substituteMono(expTy, sig), sigExpTy => {
-                                return bind(freshInstance(tau_), freshTau => {
-                                    return bind(checkedUnify(sigExpTy, freshTau, expr), sig3 => {
-                                        return substCompose(sig3, sig)
-                                    });
-                                });
-                            });
-                        });
-                    });
-                });
             });
         }
         case 'if_then_else': {
@@ -321,8 +294,10 @@ export const registerTypeDecls = (decls: TypeDecl[]): void => {
                     context.instances.set(td.class_, []);
                 }
 
+                const instTyName = isTyConst(td.ty) ? td.ty.name : '*';
+
                 // add this instance to the context
-                context.instances.get(td.class_)?.push(td.ty.name);
+                context.instances.get(td.class_)?.push(instTyName);
                 break;
             }
         }

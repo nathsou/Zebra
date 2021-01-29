@@ -1,7 +1,7 @@
 import { DecisionTree } from "../DecisionTrees/DecisionTree.ts";
 
 // CoreExpr where CaseOfExpr is replaced by SwitchExpr
-export type PrimExpr = PrimAtomicExpr | PrimAppExpr | PrimIfThenElseExpr | PrimBinopExpr
+export type PrimExpr = PrimAtomicExpr | PrimAppExpr | PrimIfThenElseExpr
     | PrimSwitchExpr | PrimLambdaExpr | PrimLetInExpr | PrimLetRecInExpr | PrimSubtermOccurence;
 
 export type PrimLambdaExpr = {
@@ -76,13 +76,6 @@ export type PrimAppExpr = {
 };
 
 export type PrimAtomicExpr = PrimConstantExpr | PrimVarExpr | PrimTyConstExpr;
-
-export type PrimBinopExpr = {
-    type: 'binop',
-    operator: string,
-    left: PrimExpr,
-    right: PrimExpr
-};
 
 export type PrimSubtermOccurence = {
     type: 'subterm',

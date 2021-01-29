@@ -5,11 +5,12 @@ import { MonoTy } from "../Inferencer/Types.ts";
 import { Decl } from "../Parser/Decl.ts";
 import { varOf } from "../Parser/Expr.ts";
 import { lambdaOf } from "../Parser/Sugar.ts";
-import { envAdd, envGet, envHas, envSum } from "../Utils/Env.ts";
+import { envAdd, envAddMut, envGet, envHas, envSum } from "../Utils/Env.ts";
 import { isSome } from "../Utils/Maybe.ts";
 import { bind, error, isOk, mapResult, ok, Result } from "../Utils/Result.ts";
 import { unifyPattern } from "./Pattern.ts";
-import { ClosureVal, RecVarVal, ty, ValEnv, Value, valuesEq, ValueTypeMap } from "./Value.ts";
+import { primitiveValEnv } from "./PrimitiveVals.ts";
+import { ClosureVal, RecVarVal, showValue, ValEnv, Value, ValueTypeMap } from "./Value.ts";
 
 type EvalError = string;
 type EvalResult = Result<Value, EvalError>;
@@ -21,47 +22,6 @@ const checkType = <T extends keyof ValueTypeMap>(res: EvalResult, type: T): Resu
         }
 
         return ok(val as ValueTypeMap[T]);
-    });
-};
-
-const intBinopMap = {
-    '+': (a: number, b: number) => a + b,
-    '-': (a: number, b: number) => a - b,
-    '*': (a: number, b: number) => a * b,
-    '/': (a: number, b: number) => Math.floor(a / b),
-    '%': (a: number, b: number) => a % b
-};
-
-const evalIntBinop = (
-    a: CoreExpr,
-    b: CoreExpr,
-    env: ValEnv,
-    op: (a: number, b: number) => number
-): EvalResult => {
-    return bind(checkType(evalExpr(a, env), 'int'), a => {
-        return bind(checkType(evalExpr(b, env), 'int'), b => {
-            return ok({ type: 'int', value: op(a.value, b.value) });
-        });
-    });
-};
-
-const intBoolBinopMap = {
-    '<': (a: number, b: number) => a < b,
-    '>': (a: number, b: number) => a > b,
-    '<=': (a: number, b: number) => a <= b,
-    '>=': (a: number, b: number) => a >= b
-};
-
-const evalIntBoolBinop = (
-    a: CoreExpr,
-    b: CoreExpr,
-    env: ValEnv,
-    op: (a: number, b: number) => boolean
-): EvalResult => {
-    return bind(checkType(evalExpr(a, env), 'int'), a => {
-        return bind(checkType(evalExpr(b, env), 'int'), b => {
-            return ok(ty(op(a.value, b.value) ? 'True' : 'False'));
-        });
     });
 };
 
@@ -97,28 +57,6 @@ const evalExpr = (expr: CoreExpr, env: ValEnv): EvalResult => {
                     return evalExpr(elseBranch, env);
                 }
             });
-        case 'binop':
-            switch (expr.operator) {
-                case '+':
-                case '-':
-                case '*':
-                case '/':
-                case '%':
-                    return evalIntBinop(expr.left, expr.right, env, intBinopMap[expr.operator]);
-                case '<':
-                case '>':
-                case '<=':
-                case '>=':
-                    return evalIntBoolBinop(expr.left, expr.right, env, intBoolBinopMap[expr.operator]);
-                case '==':
-                    return bind(evalExpr(expr.left, env), a => {
-                        return bind(evalExpr(expr.right, env), b => {
-                            return ok(ty(valuesEq(a, b) ? 'True' : 'False'));
-                        });
-                    });
-                default:
-                    return error(`unknown operator: "${expr.operator}"`);
-            }
         case 'constant':
             switch (expr.kind) {
                 case 'integer':
@@ -147,10 +85,21 @@ const evalExpr = (expr: CoreExpr, env: ValEnv): EvalResult => {
         case 'lambda':
             return ok({ type: 'closure', arg: expr.arg.name, body: expr.body, env });
         case 'app':
-            return bind(checkType(evalExpr(expr.lhs, env), 'closure'), f => {
-                return bind(evalExpr(expr.rhs, env), val => {
-                    return evalExpr(f.body, envAdd(f.env, f.arg, val));
-                });
+
+            return bind(evalExpr(expr.lhs, env), f => {
+                switch (f.type) {
+                    case 'closure':
+                        return bind(evalExpr(expr.rhs, env), val => {
+                            return evalExpr(f.body, envAdd(f.env, f.arg, val));
+                        });
+                    case 'primitive_func':
+                        return bind(evalExpr(expr.rhs, env), val => {
+                            return ok(f.body(val));
+                        });
+                    default:
+                        return error(`expected value of type 'closure' or 'primitive_func', got: ${f.type}`);
+                }
+
             });
         case 'case_of':
             return bind(evalExpr(expr.value, env), val => {
@@ -162,13 +111,13 @@ const evalExpr = (expr: CoreExpr, env: ValEnv): EvalResult => {
                     }
                 }
 
-                return error(`pattern matching is not exhaustive in "${showCoreExpr(expr)}"`);
+                return error(`pattern matching is not exhaustive in "${showCoreExpr(expr)}", failed with: "${showValue(val)}"`);
             });
     }
 };
 
 export const registerDecl = (decls: CoreDecl[]): Result<ValEnv, EvalError> => {
-    let env: Record<string, Value> = {};
+    const env = primitiveValEnv();
     const constants: CoreFuncDecl[] = [];
 
     for (const decl of decls) {
@@ -193,7 +142,7 @@ export const registerDecl = (decls: CoreDecl[]): Result<ValEnv, EvalError> => {
                         env
                     };
 
-                    env[decl.funName.name] = recvar;
+                    envAddMut(env, decl.funName.name, recvar);
                 }
                 break;
             }
@@ -202,11 +151,11 @@ export const registerDecl = (decls: CoreDecl[]): Result<ValEnv, EvalError> => {
                 for (const variant of decl.variants) {
                     // constant / nullary variants
                     if (variant.args.length === 0) {
-                        env[variant.name] = {
+                        envAddMut(env, variant.name, {
                             type: 'tyconst',
                             name: variant.name,
                             args: []
-                        };
+                        });
                     } else { // compound variants
                         const args = variant.args.map((_, i) => `x${i}`);
                         const body: CoreTyConstExpr = {
@@ -215,12 +164,12 @@ export const registerDecl = (decls: CoreDecl[]): Result<ValEnv, EvalError> => {
                             args: args.map(x => varOf(x))
                         };
 
-                        env[variant.name] = {
+                        envAddMut(env, variant.name, {
                             type: 'closure',
                             arg: args[0],
                             body: args.length > 1 ? lambdaOf(args.slice(1).map(varOf), body) : body,
                             env
-                        };
+                        });
                     }
                 }
                 break;
@@ -235,7 +184,7 @@ export const registerDecl = (decls: CoreDecl[]): Result<ValEnv, EvalError> => {
         const res = evalExpr(body, env);
 
         if (isOk(res)) {
-            env[funName.name] = res.value;
+            envAddMut(env, funName.name, res.value);
         } else {
             return res;
         }

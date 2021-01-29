@@ -19,13 +19,6 @@ export const substitutePrim = (
                 lhs: substitutePrim(e.lhs, subst),
                 rhs: substitutePrim(e.rhs, subst)
             };
-        case 'binop':
-            return {
-                type: 'binop',
-                operator: e.operator,
-                left: substitutePrim(e.left, subst),
-                right: substitutePrim(e.right, subst)
-            };
         case 'constant':
             return e;
         case 'if_then_else':

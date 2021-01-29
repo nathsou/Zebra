@@ -1,14 +1,14 @@
+import { CoreDecl, CoreFuncDecl } from "../Core/CoreDecl.ts";
+import { CoreExpr } from "../Core/CoreExpr.ts";
 import { context } from "../Inferencer/Context.ts";
 import { instanceMethodsTypes } from "../Inferencer/Inferencer.ts";
-import { canonicalizeTyVars, expandTy, isTyOverloaded, MonoTy, showMonoTy, showOverloadedTy } from "../Inferencer/Types.ts";
-import { directedUnify, showSubst, substCompose, substituteMono, TypeSubst, unify } from "../Inferencer/Unification.ts";
+import { canonicalizeTyVars, expandTy, isTyOverloaded, MonoTy, showMonoTy } from "../Inferencer/Types.ts";
+import { directedUnify, substCompose, substituteMono, TypeSubst } from "../Inferencer/Unification.ts";
 import { DataTypeDecl, InstanceDecl } from "../Parser/Decl.ts";
 import { VarExpr, varOf } from "../Parser/Expr.ts";
 import { lambdaOf } from "../Parser/Sugar.ts";
 import { defined } from "../Utils/Common.ts";
 import { bind, bind2, bind3, error, isError, isOk, ok, reduceResult, Result, Unit } from "../Utils/Result.ts";
-import { CoreDecl, CoreFuncDecl } from "./CoreDecl.ts";
-import { CoreExpr, showCoreExpr } from "./CoreExpr.ts";
 
 type ResolutionEnv = Map<string, [MonoTy, CoreExpr][]>;
 
@@ -138,6 +138,8 @@ const findReplacement = (
 
         const sig2 = directedUnify(sigTau.value, sigTy.value);
 
+        // console.log(`${f} : ${showMonoTy(sigTau.value)} : ${showMonoTy(sigTy.value)}`);
+
         if (isOk(sig2)) {
             specializations.set(key, expr);
             return bind(substCompose(sig2.value, sig), sig21 => {
@@ -241,21 +243,6 @@ const monomorphizeExpr = (e: CoreExpr, sig: TypeSubst, renv: ResolutionEnv): Res
                     });
                 }
             )
-        }
-
-        case 'binop': {
-            return bind2(
-                monomorphizeExpr(e.left, sig, renv),
-                monomorphizeExpr(e.right, sig, renv),
-                ([left, right]) => {
-                    return ok({
-                        type: 'binop',
-                        left,
-                        operator: e.operator,
-                        right
-                    });
-                }
-            );
         }
 
         case 'lambda':

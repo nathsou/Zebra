@@ -1,4 +1,5 @@
 import { defined, sameElems } from "../Utils/Common.ts";
+import { Env } from "../Utils/Env.ts";
 import { Result } from "../Utils/Result.ts";
 import { nextTyVarId } from "./Context.ts";
 import { freeVarsEnv, freeVarsMonoTy, substituteMono, substOf } from "./Unification.ts";
@@ -34,12 +35,17 @@ export type PolyTy = {
 export const typeVarNamer = () => {
     const memo = new Map<string, TyVar>();
 
-    return (name: string): TyVar => {
-        if (!memo.has(name)) {
-            memo.set(name, tyVar(memo.size));
-        }
+    return {
+        name: (name: string): TyVar => {
+            if (!memo.has(name)) {
+                memo.set(name, tyVar(nextTyVarId()));
+            }
 
-        return defined(memo.get(name));
+            return defined(memo.get(name));
+        },
+        reset: (): void => {
+            memo.clear();
+        }
     };
 };
 
@@ -87,7 +93,7 @@ export const generalizeTy = (env: TypeEnv, ty: MonoTy): PolyTy => {
     return polyTy(ty, ...polyVars);
 };
 
-export type TypeEnv = { [x: string]: PolyTy };
+export type TypeEnv = Env<PolyTy>;
 
 export const monoTypesEq = (s: MonoTy, t: MonoTy): boolean => {
     if (isTyConst(s) && isTyConst(t)) {
@@ -209,7 +215,7 @@ export const canonicalizeTyVars = (t: MonoTy, renameMap: Map<TyVar['value'], TyV
 };
 
 export const expandTy = (ty: MonoTy, acc: string[] = []): string[] => {
-    if (isTyVar(ty)) return acc;
+    if (isTyVar(ty)) return [...acc, '*'];
 
     if (ty.name !== '->') {
         acc.push(ty.name);

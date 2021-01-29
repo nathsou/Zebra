@@ -1,5 +1,5 @@
 import { CoreFuncDecl, showCoreDecl } from "../Core/CoreDecl.ts";
-import { canonicalizeTyVars, PolyTy, showMonoTy, showTyVar, TyClass, TyConst, TyVar } from "../Inferencer/Types.ts";
+import { canonicalizeTyVars, MonoTy, PolyTy, showMonoTy, showTyVar, TyClass, TyConst, TyVar } from "../Inferencer/Types.ts";
 import { Pattern, showPattern } from "../Interpreter/Pattern.ts";
 // Declarations are expressions affecting the global environment
 import { Expr, showExpr, VarExpr } from "./Expr.ts";
@@ -35,7 +35,7 @@ export type InstanceDecl = {
     type: 'instance',
     context: TyClass[],
     class_: string,
-    ty: TyConst,
+    ty: MonoTy,
     defs: Map<string, [TyVar['value'], CoreFuncDecl]>
 };
 

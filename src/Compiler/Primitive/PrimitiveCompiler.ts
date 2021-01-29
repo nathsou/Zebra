@@ -1,13 +1,13 @@
+import { casifyFunctionDeclarations } from "../../Core/Casify.ts";
 import { CoreDecl } from "../../Core/CoreDecl.ts";
 import { CoreExpr } from "../../Core/CoreExpr.ts";
-import { casifyFunctionDeclarations } from "../../Core/Casify.ts";
 import { Decl } from "../../Parser/Decl.ts";
 import { gen } from "../../Utils/Common.ts";
+import { isSome, Maybe } from "../../Utils/Maybe.ts";
 import { showDecisionTree } from "../DecisionTrees/DecisionTree.ts";
 import { clauseMatrixOf, compileClauseMatrix } from "../DecisionTrees/DecisionTreeCompiler.ts";
 import { PrimDecl } from "./PrimitiveDecl.ts";
 import { PrimExpr } from "./PrimitiveExpr.ts";
-import { isSome, Maybe } from "../../Utils/Maybe.ts";
 
 export const primitiveProgramOfCore = (coreProg: CoreDecl[]): PrimDecl[] => {
     const decls: PrimDecl[] = [];
@@ -65,13 +65,6 @@ export const primitiveOf = (e: CoreExpr): PrimExpr => {
                 lhs: primitiveOf(e.lhs),
                 rhs: primitiveOf(e.rhs)
             };
-        case 'binop':
-            return {
-                type: 'binop',
-                operator: e.operator,
-                left: primitiveOf(e.left),
-                right: primitiveOf(e.right)
-            };
         case 'case_of': {
             const m = clauseMatrixOf(e);
             const dt = compileClauseMatrix(e.arity, m, new Set());
@@ -126,7 +119,6 @@ export const primitiveOf = (e: CoreExpr): PrimExpr => {
 export const showPrim = (e: PrimExpr): string => {
     switch (e.type) {
         case 'app': return `(${showPrim(e.lhs)} ${showPrim(e.rhs)})`;
-        case 'binop': return `${showPrim(e.left)} ${e.operator} ${showPrim(e.right)}`;
         case 'constant': return `${e.value}`;
         case 'if_then_else':
             return `if ${showPrim(e.cond)} then ${showPrim(e.thenBranch)} else ${showPrim(e.elseBranch)}`;

@@ -59,11 +59,12 @@ const findInstanceContext = (
     ctor: string,
     class_: string
 ): Result<Unit, string> => {
-    // console.log(`looking for an instance of ${class_} with ${ctor}`);
-
     const { instances } = context;
 
-    if (!instances.get(class_)?.includes(ctor)) {
+    if (
+        !instances.get(class_)?.includes(ctor) &&
+        !instances.get(class_)?.includes('*')
+    ) {
         return error(`no instance of class ${class_} found for ${ctor}`);
     }
 

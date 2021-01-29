@@ -11,6 +11,7 @@ export const floatTy = tyConst('Float');
 export const boolTy = tyConst('Bool');
 export const charTy = tyConst('Char');
 export const unitTy = tyConst('()');
+export const stringTy = tyConst('List', charTy);
 
 // at least one argument
 export function funTy(...ts: MonoTy[]): MonoTy {

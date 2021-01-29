@@ -1,41 +1,30 @@
-import { CoreDecl, CoreFuncDecl } from "../../Core/CoreDecl.ts";
+import { CoreDecl } from "../../Core/CoreDecl.ts";
 import { context } from "../../Inferencer/Context.ts";
+import { isPrimitiveFunc, PrimitiveFunction } from "../../Inferencer/Primitives.ts";
 import { lambdaOf } from "../../Parser/Sugar.ts";
+import { symbolRenameMap } from '../../Parser/Symbols.ts';
 import { defined, head, tail } from "../../Utils/Common.ts";
 import { DecisionTree } from "../DecisionTrees/DecisionTree.ts";
 import { IndexedOccurence } from "../DecisionTrees/DecisionTreeCompiler.ts";
 import { primitiveProgramOfCore } from "../Primitive/PrimitiveCompiler.ts";
 import { PrimDecl } from "../Primitive/PrimitiveDecl.ts";
 import { PrimExpr } from "../Primitive/PrimitiveExpr.ts";
+import { jsPrimitives } from "./JSPrimitives.ts";
 
 export const rename = (f: string): string => {
     if (f === 'eval') return 'eval_';
-    return f.replace(/'/g, '_prime_');
+
+    return f
+        .split('')
+        .map(c => symbolRenameMap.has(c) ? (c === '_' ? '_' : `_${symbolRenameMap.get(c)}_`) : c)
+        .join('');
 };
 
-const equ = `
-function __equ(a, b) {
-    if (typeof a !== 'object') {
-        return a === b;
-    }
-
-    if (a.name !== b.name || a.args.length !== b.args.length) {
-        return false;
-    }
-
-    for (let i = 0; i < a.args.length; i++) {
-        if (!__equ(a.args[i], b.args[i])) {
-            return false;
-        }
-    }
-
-    return true;
-}
-`;
-
-let usedEqu = false;
+const usedPrimitives = new Set<PrimitiveFunction>();
 
 export const naiveJsProgramOf = (prog: CoreDecl[]): string => {
+    usedPrimitives.clear();
+
     const out: string[] = [];
 
     const prim = primitiveProgramOfCore(prog);
@@ -49,18 +38,17 @@ export const naiveJsProgramOf = (prog: CoreDecl[]): string => {
         }
     }
 
-    const ret = (usedEqu ? `${equ}\n\n` : '') + out.join('\n\n');
+    const primitives = [...usedPrimitives]
+        .map(f => defined(jsPrimitives().get(f)).trim());
 
-    usedEqu = false;
-
-    return ret;
+    return [primitives, out].map(l => l.join('\n\n')).join('\n\n');
 };
 
 const naiveJsDeclOf = (d: PrimDecl): string => {
     switch (d.type) {
         case 'fun':
             if (d.args.length === 0) {
-                if (d.name[0] === d.name[0].toUpperCase()) {
+                if (context.datatypes.has(d.name)) {
                     return `const ${rename(d.name)} = { name: "${d.name}", args: [] };`
                 } else {
                     return `const ${rename(d.name)} = ${naiveJsExprOf(d.body)};`;
@@ -79,19 +67,15 @@ const naiveJsExprOf = (e: PrimExpr): string => {
         case 'variable':
             if (e.name === 'True') return 'true';
             if (e.name === 'False') return 'false';
+
+            if (isPrimitiveFunc(e.name)) {
+                usedPrimitives.add(e.name);
+                return e.name;
+            }
+
             return rename(e.name);
         case 'tyconst':
             return `({ name: "${e.name}", args: [${e.args.map(naiveJsExprOf).join(', ')}] })`;
-        case 'binop':
-            const lhs = naiveJsExprOf(e.left);
-            const rhs = naiveJsExprOf(e.right);
-            // use deep comparison
-            if (e.operator === '==') {
-                usedEqu = true;
-                return `__equ(${lhs}, ${rhs})`;
-            }
-
-            return `${lhs} ${e.operator} ${rhs}`;
         case 'lambda':
             return `(${e.arg} => ${naiveJsExprOf(e.body)})`;
         case 'let_in':

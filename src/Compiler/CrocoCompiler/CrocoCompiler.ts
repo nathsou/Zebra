@@ -1,10 +1,13 @@
 import { coreOf } from "../../Core/Casify.ts";
-import { CoreDecl } from "../../Core/CoreDecl.ts";
 import { coreExprFreeVars, varEnvOf } from "../../Core/ExprOfFunDecls.ts";
+import { isPrimitiveFunc, PrimitiveFunction, primitives } from "../../Inferencer/Primitives.ts";
 import { isVar, Pattern, vars } from "../../Interpreter/Pattern.ts";
 import { Decl } from "../../Parser/Decl.ts";
 import { Expr } from "../../Parser/Expr.ts";
 import { renameVars } from '../../Parser/RenameVars.ts';
+import { symbolRenameMap } from "../../Parser/Symbols.ts";
+import { defined } from "../../Utils/Common.ts";
+import { crocoPrimitives } from "./CrocoPrimitives.ts";
 
 const camel = (f: string): string => {
     return `${f[0].toUpperCase()}${f.slice(1)}`;
@@ -12,10 +15,21 @@ const camel = (f: string): string => {
 
 const rename = (f: string): string => {
     if (f === 'main') return 'Main';
-    return `Ze${camel(f)}`;
+
+    return `Ze${camel(f.replaceAll('_', ''))}`
+        .split('')
+        .map(c => symbolRenameMap.has(c) ?
+            (c === '_' ? 'U' : `${camel(defined(symbolRenameMap.get(c)))}`) :
+            c
+        )
+        .join('');
 };
 
+const usedPrimitives = new Set<PrimitiveFunction>();
+
 export const crocoProgramOf = (prog: Decl[]): string => {
+    usedPrimitives.clear();
+
     const topLevelFuncs: string[] = [];
     const funcNames = new Set<string>();
 
@@ -28,10 +42,14 @@ export const crocoProgramOf = (prog: Decl[]): string => {
 
     const decls = prog
         .map(decl => crocoDeclOf(decl, topLevelFuncs, funcNames))
-        .filter(s => s.length > 0)
-        .join('\n');
+        .filter(s => s.length > 0);
 
-    return topLevelFuncs.join('\n') + '\n' + decls;
+    const primFuncs = [...usedPrimitives]
+        .map(f => defined(crocoPrimitives().get(f)));
+
+    return [primFuncs, topLevelFuncs, decls]
+        .map(v => v.join('\n'))
+        .join('\n');
 };
 
 export const crocoDeclOf = (
@@ -72,7 +90,15 @@ export const crocoPatternOf = (pattern: Pattern): string => {
 export const crocoExprOf = (expr: Expr, topLevelFuncs: string[], funcNames: Set<string>): string => {
     switch (expr.type) {
         case 'variable':
-            if (funcNames.has(expr.name)) return rename(expr.name);
+            if (isPrimitiveFunc(expr.name)) {
+                usedPrimitives.add(expr.name);
+                return rename(expr.name);
+            }
+
+            if (funcNames.has(expr.name)) {
+                return rename(expr.name);
+            }
+
             return expr.name;
         case 'tyconst':
             if (expr.args.length === 0) return camel(expr.name);
@@ -116,7 +142,11 @@ export const crocoExprOf = (expr: Expr, topLevelFuncs: string[], funcNames: Set<
             for (const c of expr.cases) {
                 const fv = coreExprFreeVars(
                     coreOf(c.expr),
-                    varEnvOf(...[...vars(c.pattern)].map(v => v.value), ...funcNames));
+                    varEnvOf(
+                        ...[...vars(c.pattern)].map(v => v.value),
+                        ...funcNames,
+                        ...primitives.keys()
+                    ));
 
                 for (const v of fv) {
                     if (v[0] === v[0].toLowerCase()) {
@@ -141,11 +171,6 @@ export const crocoExprOf = (expr: Expr, topLevelFuncs: string[], funcNames: Set<
             const arg = crocoPatternOf(expr.arg);
             const body = crocoExprOf(expr.body, topLevelFuncs, funcNames);
             return `(\\${arg} -> ${body})`;
-        }
-        case 'binop': {
-            const lhs = crocoExprOf(expr.left, topLevelFuncs, funcNames);
-            const rhs = crocoExprOf(expr.right, topLevelFuncs, funcNames);
-            return `(${lhs} ${expr.operator} ${rhs})`;
         }
         case 'app': {
             const lhs = crocoExprOf(expr.lhs, topLevelFuncs, funcNames);

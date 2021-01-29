@@ -2,7 +2,6 @@ import { casifyFunctionDeclarations } from "../Core/Casify.ts";
 import { CoreDecl, CoreFuncDecl, partitionDecls, PartitionedDecls } from "../Core/CoreDecl.ts";
 import { CoreExpr, CoreLetInExpr } from "../Core/CoreExpr.ts";
 import { funcDeclsDependencies, singleExprProgOf, usedFuncDecls } from "../Core/ExprOfFunDecls.ts";
-import { monomorphizeProg } from "../Core/Monomorphize.ts";
 import { Decl } from "../Parser/Decl.ts";
 import { VarExpr, varOf } from "../Parser/Expr.ts";
 import { defined, find } from "../Utils/Common.ts";
@@ -10,6 +9,8 @@ import { isNone, Maybe } from "../Utils/Maybe.ts";
 import { bind, error, ok, Result } from "../Utils/Result.ts";
 import { clearContext } from "./Context.ts";
 import { inferExprType, registerTypeDecls, typeCheckInstances } from "./Inferencer.ts";
+import { monomorphizeProg } from "./Monomorphize.ts";
+import { primitiveEnv } from "./Primitives.ts";
 import { canonicalizeTyVars, MonoTy } from "./Types.ts";
 import { substCompose, TypeSubst } from "./Unification.ts";
 
@@ -64,12 +65,15 @@ export const typeCheck = (prog: Decl[]): Result<{
     // initialize the context
     registerTypeDecls(typeDecls);
 
-    return bind(inferExprType(wrapMain(singleExprProg, main.funName)), ([ty, sig1]) => {
+    const gamma = primitiveEnv();
+
+    return bind(inferExprType(wrapMain(singleExprProg, main.funName), gamma), ([ty, sig1]) => {
         return bind(typeCheckInstances(decls.instanceDecls), sig2 => {
             return bind(substCompose(sig1, sig2), sig12 => {
                 return bind(monomorphizeProg(coreProg, sig12), mono => {
                     const deps = funcDeclsDependencies(mono, decls.dataTypeDecls);
                     const reorderd = reorderFuncs(mono, [...usedFuncDecls('main', deps)].reverse());
+
 
                     return ok({
                         ty: canonicalizeTyVars(ty),
