@@ -1,11 +1,12 @@
-import { CoreDecl, CoreFuncDecl } from "../Core/CoreDecl.ts";
+import { CoreFuncDecl } from "../Core/CoreDecl.ts";
 import { CoreExpr } from "../Core/CoreExpr.ts";
 import { context } from "../Inferencer/Context.ts";
 import { instanceMethodsTypes } from "../Inferencer/Inferencer.ts";
-import { canonicalizeTyVars, expandTy, isTyOverloaded, MonoTy, showMonoTy } from "../Inferencer/Types.ts";
+import { expandTy, isTyOverloaded, MonoTy, showMonoTy } from "../Inferencer/Types.ts";
 import { directedUnify, substCompose, substituteMono, TypeSubst } from "../Inferencer/Unification.ts";
-import { DataTypeDecl, InstanceDecl } from "../Parser/Decl.ts";
+import { InstanceDecl } from "../Parser/Decl.ts";
 import { VarExpr, varOf } from "../Parser/Expr.ts";
+import { Program } from "../Parser/Program.ts";
 import { lambdaOf } from "../Parser/Sugar.ts";
 import { defined } from "../Utils/Common.ts";
 import { bind, bind2, bind3, error, isError, isOk, ok, reduceResult, Result, Unit } from "../Utils/Result.ts";
@@ -17,38 +18,19 @@ const specializations = new Map<string, CoreExpr>();
 // replace overloaded methods by their type-dependent definitions
 // http://okmij.org/ftp/Computation/typeclass.html
 export const monomorphizeProg = (
-    decls: CoreDecl[],
+    prog: Program,
     sig: TypeSubst
 ): Result<CoreFuncDecl[], string> => {
     specializations.clear();
     const renv: ResolutionEnv = new Map();
-
-    const instances: InstanceDecl[] = [];
-    const funs: CoreFuncDecl[] = [];
-    const datatypes: DataTypeDecl[] = [];
-
     const res: CoreFuncDecl[] = [];
 
-    for (const decl of decls) {
-        switch (decl.type) {
-            case 'fun':
-                funs.push(decl);
-                break;
-            case 'instance':
-                instances.push(decl);
-                break;
-            case 'datatype':
-                datatypes.push(decl);
-                break;
-        }
-    }
-
-    for (const inst of instances) {
+    for (const inst of prog.instances) {
         const res = addInstanceToResolutionEnv(inst, renv);
         if (isError(res)) return res;
     }
 
-    for (const f of funs) {
+    for (const f of prog.coreFuncs.values()) {
         const ty = identifierType(f.funName, sig);
         if (isError(ty)) return ty;
 
@@ -151,7 +133,7 @@ const findReplacement = (
         }
     }
 
-    return error(`no replacement found for '${f}' with type '${showMonoTy(canonicalizeTyVars(ty))}'`);
+    return error(`no replacement found for '${f}' with type '${showMonoTy((ty))}'`);
 };
 
 const identifierType = (v: VarExpr, sig: TypeSubst): Result<MonoTy, string> => {

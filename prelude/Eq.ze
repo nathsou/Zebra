@@ -1,0 +1,11 @@
+
+class Eq a where
+    (==) : a -> a -> Bool;
+
+instance Eq Int where
+    (==) = eqInt;
+
+instance Eq Char where
+    (==) = eqChar;
+
+export (Eq);

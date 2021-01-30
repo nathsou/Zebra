@@ -1,35 +1,16 @@
 import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
 import { isVar, patVarOfVar, varOfPatVar } from "../Interpreter/Pattern.ts";
-import { Decl, FuncDecl } from "../Parser/Decl.ts";
+import { FuncDecl } from "../Parser/Decl.ts";
 import { CaseOfExpr, Expr, TyConstExpr, varOf } from "../Parser/Expr.ts";
-import { gen } from "../Utils/Common.ts";
-import { CoreDecl, CoreFuncDecl } from "./CoreDecl.ts";
+import { gen, mapValues } from "../Utils/Common.ts";
+import { CoreFuncDecl } from "./CoreDecl.ts";
 import { CoreCaseOfExpr, CoreExpr, CoreTyConstExpr } from "./CoreExpr.ts";
 
-export const casifyFunctionDeclarations = (prog: Decl[]): CoreDecl[] => {
-    const funs: FuncDecl[] = [];
-    const core: CoreDecl[] = [];
-
-    for (const decl of prog) {
-        switch (decl.type) {
-            case 'fun':
-                funs.push(decl);
-                break;
-            case 'datatype':
-            case 'typeclass':
-            case 'instance':
-                core.push(decl);
-                break;
-        }
-    }
-
-    const grouped = groupByHead(funs);
-
-    for (const [name, funs] of grouped) {
-        core.push(reducePatternMatchingToCaseOf(casify(name, funs)));
-    }
-
-    return core;
+export const casifyFunctionDeclarations = (funcs: Map<string, FuncDecl[]>): Map<string, CoreFuncDecl> => {
+    return mapValues(
+        funcs,
+        (defs, name) => reducePatternMatchingToCaseOf(casify(name, defs))
+    );
 };
 
 export const reducePatternMatchingToCaseOf = (fun: FuncDecl): CoreFuncDecl => {

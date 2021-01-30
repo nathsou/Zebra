@@ -2,8 +2,8 @@ import { CoreDecl, CoreFuncDecl } from "../Core/CoreDecl.ts";
 import { CoreExpr, CoreTyConstExpr, showCoreExpr } from "../Core/CoreExpr.ts";
 import { typeCheck } from "../Inferencer/TypeCheck.ts";
 import { MonoTy } from "../Inferencer/Types.ts";
-import { Decl } from "../Parser/Decl.ts";
 import { varOf } from "../Parser/Expr.ts";
+import { Program } from "../Parser/Program.ts";
 import { lambdaOf } from "../Parser/Sugar.ts";
 import { envAdd, envAddMut, envGet, envHas, envSum } from "../Utils/Env.ts";
 import { isSome } from "../Utils/Maybe.ts";
@@ -193,7 +193,7 @@ export const registerDecl = (decls: CoreDecl[]): Result<ValEnv, EvalError> => {
     return ok(env);
 };
 
-export const interpret = (prog: Decl[]): Result<[value: Value, type: MonoTy], string> => {
+export const interpret = (prog: Program): Result<[value: Value, type: MonoTy], string> => {
     return bind(typeCheck(prog), ({ ty, main, coreProg }) => {
         return bind(registerDecl(coreProg), env => {
             return bind(evalExpr(main.body, env), res => {

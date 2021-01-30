@@ -1,5 +1,4 @@
 import { CoreExpr, showCoreExpr } from "../Core/CoreExpr.ts";
-import { showList } from "../Parser/Sugar.ts";
 import { Env } from "../Utils/Env.ts";
 
 export type ValEnv = Env<Value>;
@@ -101,6 +100,18 @@ export const showValue = (val: Value): string => {
         case 'primitive_func':
             return `<primitive_func>`;
     }
+};
+
+export const showList = (lst: TyConstVal): string => {
+    let acc = '';
+
+    while (lst.name !== 'Nil') {
+        const tail = showValue(lst.args[0]);
+        acc += acc.length === 0 ? tail : `, ${tail}`;
+        lst = lst.args[1] as TyConstVal;
+    }
+
+    return `[${acc}]`;
 };
 
 export const showValEnv = (env: ValEnv): string => {

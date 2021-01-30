@@ -1,0 +1,52 @@
+
+data Bool = True | False;
+data List a = Nil | Cons a (List a);
+
+data BinaryOperator = Eq | Lss;
+
+data Expr = 
+    Const Value |
+    BinOp BinaryOperator Expr Expr;
+
+data Value =
+    IntVal Int |
+    BoolVal Bool;
+
+class Eq a where
+    (==) : a -> a -> Bool;
+
+instance Eq Int where
+    (==) = eqInt;
+
+instance Eq Char where
+    (==) = eqChar;
+
+instance (Eq a) => Eq (List a) where
+    (==) [] [] = True,
+    (==) a::as b::bs = if a == b then as == bs else False,
+    (==) _ _ = False;
+
+class Ord d where
+    (<) : a -> a -> Bool,
+    (<=) : a -> a -> Bool,
+    (>) : a -> a -> Bool,
+    (>=) : a -> a -> Bool;
+
+instance Ord Int where
+    (<) = lssInt,
+    (<=) = leqInt,
+    (>) = gtrInt,
+    (>=) = geqInt;
+
+intOf (IntVal n) = n;
+
+boolBinOp op a b = 
+    BoolVal (op (intOf (eval a)) (intOf (eval b)));
+
+eval (Const v) = v;
+eval (BinOp Lss a b) = boolBinOp (<) a b;
+-- eval (BinOp Eq a b) = boolBinOp (==) a b env;
+
+demo = (BinOp Lss (Const (IntVal 3)) (Const (IntVal 7)));
+
+main = boolBinOp;

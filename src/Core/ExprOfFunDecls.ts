@@ -4,15 +4,16 @@ import { expandTy, MonoTy } from "../Inferencer/Types.ts";
 import { vars } from "../Interpreter/Pattern.ts";
 import { DataTypeDecl, InstanceDecl } from "../Parser/Decl.ts";
 import { VarExpr, varOf } from "../Parser/Expr.ts";
+import { Program } from "../Parser/Program.ts";
 import { appOf, lambdaOf } from "../Parser/Sugar.ts";
 import { decons, deepCopy, defined } from "../Utils/Common.ts";
 import { coreOf } from "./Casify.ts";
-import { CoreFuncDecl, PartitionedDecls } from "./CoreDecl.ts";
+import { CoreFuncDecl } from "./CoreDecl.ts";
 import { CoreExpr, CoreLetInExpr, CoreLetRecInExpr, CoreVarExpr } from "./CoreExpr.ts";
 
 type VarEnv = { [key: string]: true };
 type Graph<T> = Map<T, Set<T>>;
-type Dependencies = Graph<string>;
+export type Dependencies = Graph<string>;
 
 export const renameTyClassInstance = (
     method: string,
@@ -48,14 +49,14 @@ const funcDeclsOfTyClassInstance = (inst: InstanceDecl) => {
 // and where mutually-recursive functions have been
 // rewritten to directly-recursive functions
 export const singleExprProgOf = (
-    decls: PartitionedDecls,
+    prog: Program,
     includeUnusedDependencies = false
 ): CoreExpr => {
-    const funcs = [...decls.funcDecls];
+    const funcs = [...prog.coreFuncs.values()];
 
-    funcs.push(...decls.instanceDecls.map(funcDeclsOfTyClassInstance).flat());
+    funcs.push(...prog.instances.map(funcDeclsOfTyClassInstance).flat());
 
-    const deps = funcDeclsDependencies(funcs, decls.dataTypeDecls);
+    const deps = funcDeclsDependencies(funcs, prog.datatypes.values());
     const mutuallyRec = mutuallyRecursiveFuncs(deps);
 
     const funs = new Map<string, CoreFuncDecl>();
@@ -163,10 +164,7 @@ const rewriteMutuallyRecursiveFunc = (
         ...f.args
     ]);
 
-    const f_: CoreVarExpr = {
-        ...f.funName,
-        name: renameMutualRecFunc(f.funName.name)
-    };
+    const f_: CoreVarExpr = varOf(renameMutualRecFunc(f.funName.name));
 
     const nextDef: CoreLetInExpr = {
         type: 'let_in',
@@ -411,8 +409,8 @@ const mutuallyRecursiveFuncs = (deps: Dependencies): Graph<string> => {
 };
 
 export const funcDeclsDependencies = (
-    funDecls: CoreFuncDecl[],
-    dataTypeDecls: DataTypeDecl[]
+    funDecls: Iterable<CoreFuncDecl>,
+    dataTypeDecls: Iterable<DataTypeDecl>
 ): Dependencies => {
     const env = varEnvOf(...envBoundVars(dataTypeDecls));
 
@@ -426,7 +424,7 @@ export const funcDeclsDependencies = (
     return deps;
 };
 
-const envBoundVars = (dataTypeDecl: DataTypeDecl[]): string[] => {
+const envBoundVars = (dataTypeDecl: Iterable<DataTypeDecl>): string[] => {
     const boundVars: string[] = [];
 
     for (const dt of dataTypeDecl) {

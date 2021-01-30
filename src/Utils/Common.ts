@@ -1,4 +1,3 @@
-import { assert, assertEquals } from "https://deno.land/std@0.83.0/testing/asserts.ts";
 import { isNone, Maybe, None } from "./Maybe.ts";
 
 export const partition = <T>(vals: T[], pred: (v: T) => boolean): [T[], T[]] => {
@@ -222,4 +221,14 @@ export const cache = <T>(f: () => T): () => T => {
 
         return cachedVal;
     };
+};
+
+export const addSet = <T, K>(m: Map<K, Set<T>>, key: K, ...values: T[]): void => {
+    if (!m.has(key)) {
+        m.set(key, new Set());
+    }
+
+    for (const v of values) {
+        m.get(key)?.add(v);
+    }
 };

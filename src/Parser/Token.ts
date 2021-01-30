@@ -73,7 +73,8 @@ type Comment = Tok<'comment', {
 
 export type KeywordType =
     'let' | 'rec' | 'in' | 'if' | 'then' |
-    'else' | 'data' | 'case' | 'of' | 'class' | 'instance' | 'where';
+    'else' | 'data' | 'case' | 'of' | 'class' |
+    'instance' | 'where' | 'import' | 'export';
 
 type Keyword = Tok<'keyword', {
     value: KeywordType

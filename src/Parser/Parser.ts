@@ -326,7 +326,32 @@ const instanceDecl: Parser<Decl> = alt(map(
     })
 ), typeClassDecl);
 
-export const decl: Parser<Decl> = instanceDecl;
+// import declarations
+
+const importDecl: Parser<Decl> = alt(map(
+    seq(
+        keyword('import'),
+        token('string'),
+        parens(commas(alt(variable, identifier)))
+    ),
+    ([_, path, imports]) => ({
+        type: 'import',
+        path: path.value,
+        imports: imports.map(imp => imp.name)
+    })
+), instanceDecl);
+
+// export declarations
+
+const exportDecl: Parser<Decl> = alt(map(
+    seq(keyword('export'), parens(commas(alt(variable, identifier)))),
+    ([_, exports]) => ({
+        type: 'export',
+        exports: exports.map(e => e.name)
+    })
+), importDecl);
+
+export const decl: Parser<Decl> = exportDecl;
 
 export const program: Parser<Decl[]> = sepBy(decl, 'semicolon', true);
 

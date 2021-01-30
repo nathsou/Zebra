@@ -1,8 +1,9 @@
 import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
 import { CoreExpr, showCoreExpr } from "../Core/CoreExpr.ts";
 import { collectPatternSubst } from "../Interpreter/Pattern.ts";
-import { InstanceDecl, TypeDecl } from "../Parser/Decl.ts";
+import { DataTypeDecl, InstanceDecl, TypeClassDecl, TypeDecl } from "../Parser/Decl.ts";
 import { VarExpr } from "../Parser/Expr.ts";
+import { Program } from "../Parser/Program.ts";
 import { defined, gen } from "../Utils/Common.ts";
 import { envAdd as envAddAux, envGet, envHas, envRem, envSum } from "../Utils/Env.ts";
 import { bind, error, fold, isError, isOk, ok, Result } from "../Utils/Result.ts";
@@ -77,10 +78,6 @@ const collectExprTypeSubsts = (
             const isDataType = context.datatypes.has(expr.name);
             const isTyClassMethod = context.typeClassMethods.has(expr.name);
 
-            if (!context.identifiers.has(expr.id)) {
-                context.identifiers.set(expr.id, [expr.name, polyTy(tau)]);
-            }
-
             if (!(inEnv || isDataType || isTyClassMethod)) {
                 return error(`unbound variable "${expr.name}"`);
             }
@@ -93,9 +90,14 @@ const collectExprTypeSubsts = (
 
             if (isTyClassMethod && !inEnv) {
                 context.typeClassMethodsOccs.set(expr.id, [tau, expr.name]);
+                context.typeClassMethodsOccs.set(expr.id, [tau, expr.name]);
             }
 
             return bind(freshInstance(varTy), ty => {
+                if (!context.identifiers.has(expr.id)) {
+                    context.identifiers.set(expr.id, [expr.name, polyTy(ty)]);
+                }
+
                 return checkedUnify(tau, ty, expr);
             });
         }
@@ -254,54 +256,58 @@ const collectExprTypeSubsts = (
     }
 };
 
-export const registerTypeDecls = (decls: TypeDecl[]): void => {
-    for (const td of decls) {
-        switch (td.type) {
-            case 'datatype': {
-                const ty = tyConst(td.name, ...td.typeVars);
+const registerDataTypeDecls = (dataTypeDecls: Iterable<DataTypeDecl>): void => {
+    for (const { name, typeVars, variants } of dataTypeDecls) {
+        const ty = tyConst(name, ...typeVars);
 
-                for (const variant of td.variants) {
-                    const variantTy = variant.args.length === 0 ?
-                        ty :
-                        funTy(variant.args[0], ...variant.args.slice(1), ty);
+        for (const variant of variants) {
+            const variantTy = variant.args.length === 0 ?
+                ty :
+                funTy(variant.args[0], ...variant.args.slice(1), ty);
 
-                    assert(isTyConst(variantTy));
+            assert(isTyConst(variantTy));
 
-                    const realType = polyTy(tyConst(variantTy.name, ...variantTy.args), ...td.typeVars);
+            const realType = polyTy(tyConst(variantTy.name, ...variantTy.args), ...typeVars);
 
-                    // add this variant to the context
-                    context.datatypes.set(variant.name, realType);
-                }
-                break;
-            }
-            case 'typeclass': {
-                if (!context.typeclasses.has(td.name)) {
-                    context.typeclasses.set(td.name, {
-                        methods: new Map(),
-                        tyVar: td.tyVar
-                    });
-                }
-
-                for (const [f, ty] of td.methods) {
-                    context.typeclasses.get(td.name)?.methods.set(f, ty);
-                    context.typeClassMethods.set(f, ty);
-                }
-
-                break;
-            }
-            case 'instance': {
-                if (!context.instances.has(td.class_)) {
-                    context.instances.set(td.class_, []);
-                }
-
-                const instTyName = isTyConst(td.ty) ? td.ty.name : '*';
-
-                // add this instance to the context
-                context.instances.get(td.class_)?.push(instTyName);
-                break;
-            }
+            // add this variant to the context
+            context.datatypes.set(variant.name, realType);
         }
     }
+};
+
+const registerTypeClassDecls = (typeClassDecls: Iterable<TypeClassDecl>): void => {
+    for (const { name, tyVar, methods } of typeClassDecls) {
+        if (!context.typeclasses.has(name)) {
+            context.typeclasses.set(name, {
+                methods: new Map(),
+                tyVar: tyVar
+            });
+        }
+
+        for (const [f, ty] of methods) {
+            context.typeclasses.get(name)?.methods.set(f, ty);
+            context.typeClassMethods.set(f, ty);
+        }
+    }
+};
+
+const registerInstanceDecls = (instances: Iterable<InstanceDecl>): void => {
+    for (const { class_, ty } of instances) {
+        if (!context.instances.has(class_)) {
+            context.instances.set(class_, []);
+        }
+
+        const instTyName = isTyConst(ty) ? ty.name : '*';
+
+        // add this instance to the context
+        context.instances.get(class_)?.push(instTyName);
+    }
+};
+
+export const registerTypeDecls = (prog: Program): void => {
+    registerDataTypeDecls(prog.datatypes.values());
+    registerTypeClassDecls(prog.typeclasses.values());
+    registerInstanceDecls(prog.instances);
 };
 
 const replaceTyVar = (ty: MonoTy, tyVar: TyVar['value'], by: MonoTy): MonoTy => {

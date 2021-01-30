@@ -83,6 +83,11 @@ export const bind4 = <A, B, C, D, T, E>(
     return f([a.value, b.value, c.value, d.value]);
 };
 
+export const bindWith = <A, B, E>(res: Result<A, E>, f: (val: A) => B): Result<B, E> => {
+    if (isError(res)) return res;
+    return ok(f(res.value));
+};
+
 /**
  * maps an array of results to a result of unwrapped and mapped values
  * if at least one value is an Error, then the result is Error
@@ -129,3 +134,11 @@ export const okOrThrow = <T, E extends string>(res: Result<T, E>): T => {
 };
 
 export type Unit = '()';
+
+export const promiseOf = <T>(res: Result<T, string>): Promise<T> => {
+    if (isOk(res)) {
+        return Promise.resolve(res.value);
+    }
+
+    return Promise.reject(res.value);
+};

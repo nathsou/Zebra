@@ -1,7 +1,7 @@
-
-data Bool = True | False;
-data List a = Nil | Cons a (List a);
-data Maybe a = None | Some a;
+import "../prelude/Prelude.ze" (
+    Bool, List, Maybe, Eq, Ord, Num,
+    not, and, or
+);
 
 data BinaryOperator = 
     Plus | Minus | Times | Divide | Modulo | Lss |
@@ -26,46 +26,6 @@ data Value =
     ClosureVal (List Char) Expr (List (List Char, Value)) |
     ClosureRecVal (List Char) (List Char) Expr (List (List Char, Value));
 
-class Eq a where
-    (==) : a -> a -> Bool;
-
-instance Eq Int where
-    (==) = eqInt;
-
-instance Eq Char where
-    (==) = eqChar;
-
-instance (Eq a) => Eq (List a) where
-    (==) [] [] = True,
-    (==) a::as b::bs = if a == b then as == bs else False,
-    (==) _ _ = False;
-
-class Num a where
-    (-) : a -> a -> a,
-    (+) : a -> a -> a,
-    (/) : a -> a -> a,
-    (*) : a -> a -> a,
-    (%) : a -> a -> a;
-
-instance Num Int where
-    (+) = plusInt,
-    (-) = minusInt,
-    (*) = timesInt,
-    (/) = divideInt,
-    (%) = modInt;
-
-class Ord b where
-    (<) : a -> a -> Bool,
-    (<=) : a -> a -> Bool,
-    (>) : a -> a -> Bool,
-    (>=) : a -> a -> Bool;
-
-instance Ord Int where
-    (<) = lssInt,
-    (<=) = leqInt,
-    (>) = gtrInt,
-    (>=) = geqInt;
-
 intOf (IntVal n) = n;
 boolOf (BoolVal q) = q;
 
@@ -77,15 +37,6 @@ boolBinOp op a b env =
 
 logicalBinOp op a b env = 
     BoolVal (op (boolOf (eval a env)) (boolOf (eval b env)));
-
-not True = False;
-not False = True;
-
-and True True = True;
-and _ _ = False;
-
-or False False = False;
-or _ _ = True;
 
 lookupEnv x [] = None; 
 lookupEnv x (y, v)::tl = if y == x then Some v else lookupEnv x tl;

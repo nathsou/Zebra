@@ -1,0 +1,48 @@
+-- FIXME: infinite loop (circular depedencies)
+-- import "./Bool.ze" (Bool);
+
+import "./Eq.ze" (Eq);
+
+data Bool = True | False;
+data List a = Nil | Cons a (List a);
+
+instance (Eq a) => Eq (List a) where
+    (==) [] [] = True,
+    (==) a::as b::bs = if a == b then as == bs else False,
+    (==) _ _ = False;
+
+map f lst = map' f lst [];
+map' _ [] acc = acc;
+map' f h::tl acc = map' f tl (f h)::acc;
+
+filter pred lst = filter' pred lst [];
+filter' _ [] acc = acc;
+filter' pred h::tl acc = filter' pred tl (if pred h then h::acc else acc);
+
+any _ [] = False;
+any pred h::tl = if pred h then True else any pred tl;
+
+all _ [] = False;
+all pred h::tl = if pred h then all tl else False;
+
+(++) as [] = as;
+(++) [] bs = bs;
+(++) a::as bs = a :: (as ++ bs);
+
+append as bs = bs ++ as;
+
+flatten lists = flatten' lists [];
+flatten' [] acc = acc;
+flatten' lst::lists acc = flatten' lists (append lst acc);
+
+intercalate _ [] = [];
+intercalate _ [x] = [x];
+intercalate sep h::tl = h::sep::(intercalate sep tl);
+
+join sep lst = flatten (intercalate sep lst);
+
+export (
+    List,
+    map, filter, any, all, (++),
+    append, flatten, intercalate, join
+);

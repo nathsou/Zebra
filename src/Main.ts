@@ -1,21 +1,22 @@
+import { primitiveProgramOfCore } from "./Compiler/Primitive/PrimitiveCompiler.ts";
+import { showPrimDecl } from "./Compiler/Primitive/PrimitiveDecl.ts";
+import { showCoreDecl } from "./Core/CoreDecl.ts";
 import { compileCroco } from "./Evaluator/CrocoEvaluator.ts";
 import { compileNaive } from "./Evaluator/NaiveEvaluator.ts";
 import { typeCheck } from "./Inferencer/TypeCheck.ts";
 import { showOverloadedTy } from "./Inferencer/Types.ts";
 import { interpret } from "./Interpreter/Interpreter.ts";
 import { showValue } from "./Interpreter/Value.ts";
-import { parse } from "./Parser/Combinators.ts";
-import { program } from "./Parser/Parser.ts";
+import { parseProgram } from "./Parser/Program.ts";
 import { bind, error, isOk, ok, Result } from "./Utils/Result.ts";
 
-const run = async (source: string, target: string): Promise<void> => {
+const run = async (path: string, target: string): Promise<void> => {
 
     let out: Result<string, string> = error('');
 
     switch (target) {
         case undefined: {
-            out = bind(parse(source, program), prog => {
-                // console.log(prog.map(showDecl).join('\n\n'));
+            out = bind(await parseProgram(path), prog => {
                 return bind(interpret(prog), ([value, _type]) => {
                     return ok(showValue(value));
                 });
@@ -24,7 +25,7 @@ const run = async (source: string, target: string): Promise<void> => {
         }
 
         case 'type': {
-            out = bind(parse(source, program), prog => {
+            out = bind(await parseProgram(path), prog => {
                 return bind(typeCheck(prog), ({ ty }) => {
                     return ok(showOverloadedTy(ty));
                 });
@@ -32,10 +33,30 @@ const run = async (source: string, target: string): Promise<void> => {
             break;
         }
 
+        case 'core':
+            out = bind(await parseProgram(path), prog => {
+                return bind(typeCheck(prog), ({ coreProg }) => {
+                    return ok(coreProg.map(showCoreDecl).join('\n\n'));
+                });
+            });
+            break;
+
+        case 'prim':
+            out = bind(await parseProgram(path), prog => {
+                return bind(typeCheck(prog), ({ coreProg }) => {
+                    return ok(
+                        primitiveProgramOfCore(coreProg)
+                            .map(showPrimDecl)
+                            .join('\n\n')
+                    );
+                });
+            });
+            break;
+
         case 'croco':
         case 'js': {
             const compile = target === 'js' ? compileNaive : compileCroco;
-            out = bind(compile(source), ([ty, code]) => {
+            out = bind(await compile(path), ([ty, code]) => {
                 console.log(`${target === 'js' ? '//' : '--'} infered type: ${showOverloadedTy(ty)}`);
                 return ok(code);
             });
@@ -62,6 +83,4 @@ const usage = () => {
 
 if (path === undefined) usage();
 
-const source = new TextDecoder('utf-8').decode(Deno.readFileSync(path));
-
-await run(source, target);
+await run(path, target);

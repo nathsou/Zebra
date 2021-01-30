@@ -1,0 +1,15 @@
+class Num a where
+    (-) : a -> a -> a,
+    (+) : a -> a -> a,
+    (/) : a -> a -> a,
+    (*) : a -> a -> a,
+    (%) : a -> a -> a;
+
+instance Num Int where
+    (+) = plusInt,
+    (-) = minusInt,
+    (*) = timesInt,
+    (/) = divideInt,
+    (%) = modInt;
+
+export (Num);

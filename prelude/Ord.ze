@@ -1,0 +1,13 @@
+class Ord d where
+    (<) : a -> a -> Bool,
+    (<=) : a -> a -> Bool,
+    (>) : a -> a -> Bool,
+    (>=) : a -> a -> Bool;
+
+instance Ord Int where
+    (<) = lssInt,
+    (<=) = leqInt,
+    (>) = gtrInt,
+    (>=) = geqInt;
+
+export (Ord);

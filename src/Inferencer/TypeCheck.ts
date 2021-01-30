@@ -1,11 +1,10 @@
-import { casifyFunctionDeclarations } from "../Core/Casify.ts";
-import { CoreDecl, CoreFuncDecl, partitionDecls, PartitionedDecls } from "../Core/CoreDecl.ts";
+import { CoreDecl, CoreFuncDecl } from "../Core/CoreDecl.ts";
 import { CoreExpr, CoreLetInExpr } from "../Core/CoreExpr.ts";
 import { funcDeclsDependencies, singleExprProgOf, usedFuncDecls } from "../Core/ExprOfFunDecls.ts";
-import { Decl } from "../Parser/Decl.ts";
 import { VarExpr, varOf } from "../Parser/Expr.ts";
+import { Program } from "../Parser/Program.ts";
 import { defined, find } from "../Utils/Common.ts";
-import { isNone, Maybe } from "../Utils/Maybe.ts";
+import { isNone } from "../Utils/Maybe.ts";
 import { bind, error, ok, Result } from "../Utils/Result.ts";
 import { clearContext } from "./Context.ts";
 import { inferExprType, registerTypeDecls, typeCheckInstances } from "./Inferencer.ts";
@@ -32,55 +31,50 @@ const reorderFuncs = (funcs: CoreFuncDecl[], order: string[]): CoreFuncDecl[] =>
     return reordered;
 };
 
-export const typeCheck = (prog: Decl[]): Result<{
+export const typeCheck = (prog: Program): Result<{
     ty: MonoTy,
     main: CoreFuncDecl,
     coreProg: CoreDecl[],
-    decls: PartitionedDecls,
     sig: TypeSubst
 }, string> => {
-    const coreProg = casifyFunctionDeclarations(prog);
-
-    const main = find(
-        coreProg,
-        f => f.type === 'fun' && f.funName.name === 'main'
-    ) as Maybe<CoreFuncDecl>;
+    const main = prog.getCoreFuncDecl('main');
 
     if (isNone(main)) {
         return error(`main function not found`);
     }
 
-    const decls = partitionDecls(coreProg);
-    const typeDecls = [
-        ...decls.dataTypeDecls,
-        ...decls.typeClassDecls,
-        ...decls.instanceDecls
-    ];
-
-    const singleExprProg = singleExprProgOf(decls, true);
+    const singleExprProg = singleExprProgOf(prog, true);
 
     // clear the global context
     clearContext();
 
     // initialize the context
-    registerTypeDecls(typeDecls);
+    registerTypeDecls(prog);
 
     const gamma = primitiveEnv();
 
     return bind(inferExprType(wrapMain(singleExprProg, main.funName), gamma), ([ty, sig1]) => {
-        return bind(typeCheckInstances(decls.instanceDecls), sig2 => {
+        return bind(typeCheckInstances(prog.instances), sig2 => {
             return bind(substCompose(sig1, sig2), sig12 => {
-                return bind(monomorphizeProg(coreProg, sig12), mono => {
-                    const deps = funcDeclsDependencies(mono, decls.dataTypeDecls);
-                    const reorderd = reorderFuncs(mono, [...usedFuncDecls('main', deps)].reverse());
 
+                // console.log(
+                //     [...context.identifiers.entries()]
+                //         // .filter(([k, [f, ty]]) => showPolyTy(okOrThrow(substitutePoly(ty, sig12))).includes('μ14'))
+                //         .filter(([k, [f, ty]]) => f.includes('boolBinOp'))
+                //         // .map(([k, [f, ty]]) => `${f} ${k}: ${showPolyTy(ty)}`)
+                //         .map(([k, [f, ty]]) => `${f} ${k}: ${showPolyTy(okOrThrow(substitutePoly(ty, sig1)))}`)
+                //         .join('\n')
+                // );
+
+                return bind(monomorphizeProg(prog, sig12), mono => {
+                    const deps = funcDeclsDependencies(mono, prog.datatypes.values());
+                    const reorderd = reorderFuncs(mono, [...usedFuncDecls('main', deps)].reverse());
 
                     return ok({
                         ty: canonicalizeTyVars(ty),
                         main: defined(find(mono, f => f.funName.name === 'main')),
-                        coreProg: [...decls.dataTypeDecls, ...reorderd],
+                        coreProg: [...prog.datatypes.values(), ...reorderd],
                         singleExprProg,
-                        decls,
                         sig: sig12
                     });
                 });

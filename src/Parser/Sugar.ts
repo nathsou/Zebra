@@ -1,5 +1,4 @@
 import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
-import { showValue, TyConstVal } from "../Interpreter/Value.ts";
 import { defined } from "../Utils/Common.ts";
 import { AppExpr, Expr, varOf } from "./Expr.ts";
 
@@ -37,18 +36,6 @@ export const cons = (vals: Expr[]): Expr => {
         },
         rhs: cons(vals.slice(1))
     };
-};
-
-export const showList = (lst: TyConstVal): string => {
-    let acc = '';
-
-    while (lst.name !== 'Nil') {
-        const tail = showValue(lst.args[0]);
-        acc += acc.length === 0 ? tail : `, ${tail}`;
-        lst = lst.args[1] as TyConstVal;
-    }
-
-    return `[${acc}]`;
 };
 
 export const appOf = (...exprs: Expr[]): AppExpr => {

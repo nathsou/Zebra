@@ -4,8 +4,7 @@ import { Pattern, showPattern } from "../Interpreter/Pattern.ts";
 // Declarations are expressions affecting the global environment
 import { Expr, showExpr, VarExpr } from "./Expr.ts";
 
-
-export type Decl = FuncDecl | TypeDecl;
+export type Decl = FuncDecl | ExportDecl | ImportDecl | TypeDecl;
 
 export type TypeDecl = DataTypeDecl | TypeClassDecl | InstanceDecl;
 
@@ -39,6 +38,17 @@ export type InstanceDecl = {
     defs: Map<string, [TyVar['value'], CoreFuncDecl]>
 };
 
+export type ImportDecl = {
+    type: 'import',
+    path: string,
+    imports: string[]
+};
+
+export type ExportDecl = {
+    type: 'export',
+    exports: string[]
+};
+
 export const showContext = (ctx: TyClass[]): string => {
     if (ctx.length === 0) return '';
     return ` (${ctx.map(c => `${c.name} ${c.tyVars.map(showTyVar).join(' ')}`).join(', ')}) => `;
@@ -56,5 +66,9 @@ export const showDecl = (decl: Decl): string => {
         case 'instance':
             return `instance${showContext(decl.context)} ${decl.class_} ${showMonoTy(canonicalizeTyVars(decl.ty))} where\n`
                 + [...decl.defs.values()].map(([_, d]) => `    ${showCoreDecl(d)}`).join('\n');
+        case 'import':
+            return `import "${decl.path}" (${decl.imports.join(', ')})`;
+        case 'export':
+            return `export (${decl.exports.join(', ')})`;
     }
 };

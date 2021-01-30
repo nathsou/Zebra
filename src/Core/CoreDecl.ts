@@ -1,8 +1,7 @@
 import { canonicalizeTyVars, showMonoTy, showTyVar } from "../Inferencer/Types.ts";
-import { DataTypeDecl, Decl, InstanceDecl, TypeClassDecl, TypeDecl } from "../Parser/Decl.ts";
-import { CoreExpr, CoreVarExpr, exprOfCore, showCoreExpr } from "./CoreExpr.ts";
-import { showContext } from "../Parser/Decl.ts";
 import { patVarOfVar } from "../Interpreter/Pattern.ts";
+import { Decl, showContext, TypeDecl } from "../Parser/Decl.ts";
+import { CoreExpr, CoreVarExpr, exprOfCore, showCoreExpr } from "./CoreExpr.ts";
 
 export type CoreDecl = CoreFuncDecl | TypeDecl;
 
@@ -11,39 +10,6 @@ export type CoreFuncDecl = {
     funName: CoreVarExpr,
     args: CoreVarExpr[],
     body: CoreExpr
-};
-
-export type PartitionedDecls = ReturnType<typeof partitionDecls>;
-
-export const partitionDecls = (decls: CoreDecl[]) => {
-    const funcDecls: CoreFuncDecl[] = [];
-    const dataTypeDecls: DataTypeDecl[] = [];
-    const typeClassDecls: TypeClassDecl[] = [];
-    const instanceDecls: InstanceDecl[] = [];
-
-    for (const d of decls) {
-        switch (d.type) {
-            case 'fun':
-                funcDecls.push(d);
-                break;
-            case 'datatype':
-                dataTypeDecls.push(d);
-                break;
-            case 'typeclass':
-                typeClassDecls.push(d);
-                break;
-            case 'instance':
-                instanceDecls.push(d);
-                break;
-        }
-    }
-
-    return {
-        funcDecls,
-        dataTypeDecls,
-        typeClassDecls,
-        instanceDecls
-    };
 };
 
 export const showCoreDecl = (decl: CoreDecl): string => {

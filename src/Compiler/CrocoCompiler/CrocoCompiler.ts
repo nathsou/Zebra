@@ -61,6 +61,8 @@ export const crocoDeclOf = (
         case 'datatype':
         case 'typeclass':
         case 'instance':
+        case 'import':
+        case 'export':
             return '';
 
         case 'fun':
@@ -164,6 +166,10 @@ export const crocoExprOf = (expr: Expr, topLevelFuncs: string[], funcNames: Set<
             }
 
             const val = crocoExprOf(expr.value, topLevelFuncs, funcNames);
+
+            if (freeVarsArgs === '') {
+                return `(${name} ${val})`;
+            }
 
             return `(${name} ${val} ${freeVarsArgs})`;
         }

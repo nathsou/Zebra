@@ -1,7 +1,6 @@
-import { casifyFunctionDeclarations } from "../../Core/Casify.ts";
 import { CoreDecl } from "../../Core/CoreDecl.ts";
 import { CoreExpr } from "../../Core/CoreExpr.ts";
-import { Decl } from "../../Parser/Decl.ts";
+import { Program } from "../../Parser/Program.ts";
 import { gen } from "../../Utils/Common.ts";
 import { isSome, Maybe } from "../../Utils/Maybe.ts";
 import { showDecisionTree } from "../DecisionTrees/DecisionTree.ts";
@@ -22,8 +21,8 @@ export const primitiveProgramOfCore = (coreProg: CoreDecl[]): PrimDecl[] => {
     return decls;
 };
 
-export const primitiveProgramOf = (prog: Decl[]): PrimDecl[] => {
-    return primitiveProgramOfCore(casifyFunctionDeclarations(prog));
+export const primitiveProgramOf = (prog: Program): PrimDecl[] => {
+    return primitiveProgramOfCore(prog.asCoreDecls());
 };
 
 const primitiveDeclOfCoreDecl = (d: CoreDecl): Maybe<PrimDecl[]> => {

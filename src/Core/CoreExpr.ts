@@ -1,5 +1,13 @@
+import { freshTyVar, TyVar } from "../Inferencer/Types.ts";
 import { Pattern, patVarOfVar, showPattern } from "../Interpreter/Pattern.ts";
 import { Expr, VarExpr } from "../Parser/Expr.ts";
+
+// export type T> = T & { ty: TyVar };
+
+// export const typed = <T>(obj: T): T> => {
+//     (obj as Record<string, any>)['ty'] = freshTyVar();
+//     return obj as T>;
+// };
 
 export type CoreExpr = CoreAtomicExpr | CoreAppExpr | CoreIfThenElseExpr
     | CoreCaseOfExpr | CoreLambdaExpr | CoreLetInExpr | CoreLetRecInExpr;
@@ -80,10 +88,10 @@ export type CoreAppExpr = {
 
 export type CoreAtomicExpr = CoreConstantExpr | CoreVarExpr | CoreTyConstExpr;
 
-export const showCoreExpr = (e: CoreExpr): string => {
+export const showCoreExpr = (e: CoreExpr, showVarIds = false): string => {
     switch (e.type) {
         case 'variable':
-            return e.name;
+            return showVarIds ? `${e.name}@${e.id}` : e.name;
         case 'constant':
             switch (e.kind) {
                 case 'integer':
@@ -93,29 +101,35 @@ export const showCoreExpr = (e: CoreExpr): string => {
                 case 'char':
                     return `'${e.value}'`;
             }
-        case 'let_in':
-            return `let ${e.left.name} = ${showCoreExpr(e.middle)} in ${showCoreExpr(e.right)}`;
-        case 'let_rec_in':
-            return `let rec ${e.funName.name} ${e.arg.name} = ${showCoreExpr(e.middle)} in ${showCoreExpr(e.right)}`;
-        case 'lambda':
-            return `λ${e.arg.name} -> ${showCoreExpr(e.body)}`;
+        case 'let_in': {
+            const name = showVarIds ? `${e.left.name}@${e.left.id}` : e.left.name;
+            return `let ${name} = ${showCoreExpr(e.middle, showVarIds)} in ${showCoreExpr(e.right, showVarIds)}`;
+        }
+        case 'let_rec_in': {
+            const name = showVarIds ? `${e.funName.name}@${e.funName.id}` : e.funName.name;
+            return `let rec ${name} ${e.arg.name} = ${showCoreExpr(e.middle, showVarIds)} in ${showCoreExpr(e.right, showVarIds)}`;
+        }
+        case 'lambda': {
+            const name = showVarIds ? `${e.arg.name}@${e.arg.id}` : e.arg.name;
+            return `λ${name} -> ${showCoreExpr(e.body, showVarIds)}`;
+        }
         case 'if_then_else':
-            return `if ${showCoreExpr(e.cond)} then ${showCoreExpr(e.thenBranch)} else ${showCoreExpr(e.elseBranch)}`;
+            return `if ${showCoreExpr(e.cond, showVarIds)} then ${showCoreExpr(e.thenBranch, showVarIds)} else ${showCoreExpr(e.elseBranch, showVarIds)}`;
         case 'app':
-            return `((${showCoreExpr(e.lhs)}) ${showCoreExpr(e.rhs)})`;
+            return `((${showCoreExpr(e.lhs, showVarIds)}) ${showCoreExpr(e.rhs, showVarIds)})`;
         case 'tyconst':
             if (e.args.length === 0) {
                 return e.name;
             }
 
             if (e.name === 'tuple') {
-                return `(${e.args.map(showCoreExpr).join(', ')})`;
+                return `(${e.args.map(a => showCoreExpr(a, showVarIds)).join(', ')})`;
             }
 
-            return `(${e.name} ${e.args.map(a => showCoreExpr(a)).join(' ')})`;
+            return `(${e.name} ${e.args.map(a => showCoreExpr(a, showVarIds)).join(' ')})`;
         case 'case_of':
-            const cases = e.cases.map(({ pattern, expr }) => `${showPattern(pattern)} -> ${showCoreExpr(expr)}`);
-            return `case ${showCoreExpr(e.value)} of ${cases.join('  | ')}`;
+            const cases = e.cases.map(({ pattern, expr }) => `${showPattern(pattern)} -> ${showCoreExpr(expr, showVarIds)}`);
+            return `case ${showCoreExpr(e.value, showVarIds)} of ${cases.join('  | ')}`;
     }
 };
 

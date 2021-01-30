@@ -20,7 +20,7 @@ const punctuations = new Map<string, Punctuation['type']>([
 
 const keywords: KeywordType[] = [
     'let', 'rec', 'in', 'if', 'then', 'else', 'data',
-    'case', 'of', 'class', 'instance', 'where'
+    'case', 'of', 'class', 'instance', 'where', 'import', 'export'
 ];
 
 export type LexerError = string;

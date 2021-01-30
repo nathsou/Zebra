@@ -1,0 +1,23 @@
+import "./Eq.ze" (Eq);
+
+data Bool = True | False;
+
+not True = False;
+not False = True;
+
+and True True = True;
+and _ _ = False;
+
+or False False = False;
+or _ _ = True;
+
+xor True True = False;
+xor False False = False;
+xor _ _ = True;
+
+instance Eq Bool where
+    (==) True True = True,
+    (==) False False = True,
+    (==) _ _ = False;
+
+export (Bool, not, and, or, xor);

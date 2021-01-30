@@ -1,5 +1,7 @@
 -- Girafe interpreter
 
+import "../prelude/Prelude.ze" (Num, Eq);
+
 data Bool = True | False;
 data List a = Nil | Cons a (List a);
 data Maybe a = None | Some a;
