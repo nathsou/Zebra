@@ -6,18 +6,18 @@ import { substitutePoly, TypeSubst } from "../src/Inferencer/Unification";
 import { isOk } from "../src/Utils/Result";
 
 Deno.test('substitutePoly', () => {
-    const α = freshTyVar();
+  const α = freshTyVar();
 
-    // α -> int
-    const σ: TypeSubst = { [α.value]: intTy };
+  // α -> int
+  const σ: TypeSubst = { [α.value]: intTy };
 
-    // γ: ∀α. α -> α
-    const γ = polyTy(funTy(α, α));
+  // γ: ∀α. α -> α
+  const γ = polyTy(funTy(α, α));
 
-    const σγ = substitutePoly(γ, σ);
+  const σγ = substitutePoly(γ, σ);
 
-    assert(isOk(σγ));
-    assert(polyTypesEq(σγ.value, polyTy(funTy(intTy, intTy))));
+  assert(isOk(σγ));
+  assert(polyTypesEq(σγ.value, polyTy(funTy(intTy, intTy))));
 
-    clearContext();
+  clearContext();
 });

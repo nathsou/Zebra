@@ -19,7 +19,7 @@
 ### Usage
 
 ```bash
-deno run -A src/Main.ts src.ze [croco/js]
+node dist/Main.js src.ze [croco/js]
 ```
 
 ### References

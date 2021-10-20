@@ -2,83 +2,83 @@ import { DecisionTree } from "../DecisionTrees/DecisionTree";
 
 // CoreExpr where CaseOfExpr is replaced by SwitchExpr
 export type PrimExpr = PrimAtomicExpr | PrimAppExpr | PrimIfThenElseExpr
-    | PrimSwitchExpr | PrimLambdaExpr | PrimLetInExpr | PrimLetRecInExpr | PrimSubtermOccurence;
+  | PrimSwitchExpr | PrimLambdaExpr | PrimLetInExpr | PrimLetRecInExpr | PrimSubtermOccurence;
 
 export type PrimLambdaExpr = {
-    type: 'lambda',
-    arg: string,
-    body: PrimExpr
+  type: 'lambda',
+  arg: string,
+  body: PrimExpr
 };
 
 export type PrimLetInExpr = {
-    type: 'let_in',
-    left: string,
-    middle: PrimExpr,
-    right: PrimExpr
+  type: 'let_in',
+  left: string,
+  middle: PrimExpr,
+  right: PrimExpr
 };
 
 export type PrimLetRecInExpr = {
-    type: 'let_rec_in',
-    funName: string,
-    arg: string,
-    middle: PrimExpr,
-    right: PrimExpr
+  type: 'let_rec_in',
+  funName: string,
+  arg: string,
+  middle: PrimExpr,
+  right: PrimExpr
 };
 
 export type PrimSwitchExpr = {
-    type: 'switch',
-    value: PrimExpr,
-    dt: DecisionTree
+  type: 'switch',
+  value: PrimExpr,
+  dt: DecisionTree
 };
 
 export type PrimVarExpr = {
-    type: 'variable',
-    name: string
+  type: 'variable',
+  name: string
 };
 
 export type PrimTyConstExpr = {
-    type: 'tyconst',
-    name: string,
-    args: PrimExpr[]
+  type: 'tyconst',
+  name: string,
+  args: PrimExpr[]
 };
 
 export type PrimConstantExpr = PrimIntegerExpr | PrimFloatExpr | PrimCharExpr;
 
 export type PrimIntegerExpr = {
-    type: 'constant',
-    kind: 'integer',
-    value: number
+  type: 'constant',
+  kind: 'integer',
+  value: number
 };
 
 export type PrimFloatExpr = {
-    type: 'constant',
-    kind: 'float',
-    value: number
+  type: 'constant',
+  kind: 'float',
+  value: number
 };
 
 export type PrimCharExpr = {
-    type: 'constant',
-    kind: 'char',
-    value: string
+  type: 'constant',
+  kind: 'char',
+  value: string
 };
 
 export type PrimIfThenElseExpr = {
-    type: 'if_then_else',
-    cond: PrimExpr,
-    thenBranch: PrimExpr,
-    elseBranch: PrimExpr
+  type: 'if_then_else',
+  cond: PrimExpr,
+  thenBranch: PrimExpr,
+  elseBranch: PrimExpr
 };
 
 export type PrimAppExpr = {
-    type: 'app',
-    lhs: PrimExpr,
-    rhs: PrimExpr
+  type: 'app',
+  lhs: PrimExpr,
+  rhs: PrimExpr
 };
 
 export type PrimAtomicExpr = PrimConstantExpr | PrimVarExpr | PrimTyConstExpr;
 
 export type PrimSubtermOccurence = {
-    type: 'subterm',
-    index: number,
-    pos: number[]
+  type: 'subterm',
+  index: number,
+  pos: number[]
 };
