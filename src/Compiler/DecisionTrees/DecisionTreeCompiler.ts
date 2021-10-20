@@ -1,11 +1,11 @@
-import { CoreCaseOfExpr, CoreCaseOfExprCase } from "../../Core/CoreExpr.ts";
-import { isVar, Pattern } from "../../Interpreter/Pattern.ts";
-import { Value } from "../../Interpreter/Value.ts";
-import { decons, Dict, dictSet, gen, head, indexed, repeat, setEq, swapMut, tail, unreachable, zip } from "../../Utils/Common.ts";
-import { isSome, Maybe } from "../../Utils/Maybe.ts";
-import { primitiveOf } from "../Primitive/PrimitiveCompiler.ts";
-import { PrimExpr, PrimSubtermOccurence } from "../Primitive/PrimitiveExpr.ts";
-import { DecisionTree, makeFail, makeLeaf, makeSwitch, Switch } from "./DecisionTree.ts";
+import { CoreCaseOfExpr, CoreCaseOfExprCase } from "../../Core/CoreExpr";
+import { isVar, Pattern } from "../../Interpreter/Pattern";
+import { Value } from "../../Interpreter/Value";
+import { decons, Dict, dictSet, gen, head, indexed, repeat, setEq, swapMut, tail, unreachable, zip } from "../../Utils/Common";
+import { isSome, Maybe } from "../../Utils/Maybe";
+import { primitiveOf } from "../Primitive/PrimitiveCompiler";
+import { PrimExpr, PrimSubtermOccurence } from "../Primitive/PrimitiveExpr";
+import { DecisionTree, makeFail, makeLeaf, makeSwitch, Switch } from "./DecisionTree";
 
 // Based on "Compiling Pattern Matching to Good Decision Trees" by Luc Maranget
 

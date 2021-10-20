@@ -1,19 +1,20 @@
-import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
-import { dirname, resolve } from "https://deno.land/std@0.85.0/path/mod.ts";
-import { casifyFunctionDeclarations, groupByHead } from "../Core/Casify.ts";
-import { CoreDecl, CoreFuncDecl } from "../Core/CoreDecl.ts";
-import { Dependencies, funcDeclsDependencies } from '../Core/ExprOfFunDecls.ts';
-import { defined } from "../Utils/Common.ts";
-import { Maybe } from "../Utils/Maybe.ts";
-import { bind, bindWith, error, isError, ok, Result, Unit } from "../Utils/Result.ts";
-import { parse } from "./Combinators.ts";
-import { DataTypeDecl, Decl, FuncDecl, InstanceDecl, TypeClassDecl } from "./Decl.ts";
-import { program } from "./Parser.ts";
+import { readFile } from 'fs/promises';
+import { dirname, resolve } from 'path';
+import { chdir, cwd } from 'process';
+import { casifyFunctionDeclarations, groupByHead } from "../Core/Casify";
+import { CoreDecl, CoreFuncDecl } from "../Core/CoreDecl";
+import { Dependencies, funcDeclsDependencies } from '../Core/ExprOfFunDecls';
+import { assert, defined } from "../Utils/Common";
+import { Maybe } from "../Utils/Maybe";
+import { bind, bindWith, error, isError, ok, Result, Unit } from "../Utils/Result";
+import { parse } from "./Combinators";
+import { DataTypeDecl, Decl, FuncDecl, InstanceDecl, TypeClassDecl } from "./Decl";
+import { program } from "./Parser";
 
 export type FileReader = (path: string) => Promise<string>;
 
-export const denoFileReader: FileReader = async (path: string) => {
-    return Deno.readTextFile(path);
+export const nodeFileReader: FileReader = async (path: string) => {
+    return await readFile(path, 'utf8');
 };
 
 export class Program {
@@ -160,7 +161,7 @@ export class Program {
             imported.add(f);
         }
 
-        return ok('()');
+        return ok('()' as const);
     }
 
     public async addImports(reader: FileReader): Promise<Result<Unit, string>> {
@@ -177,10 +178,8 @@ export class Program {
         reader: FileReader,
         programs: Map<string, Program>
     ): Promise<Result<Unit, string>> {
-        const prevDir = Deno.cwd();
-        Deno.chdir(dirname(this.path));
-
-        // console.log(this.path);
+        const prevDir = cwd();
+        chdir(dirname(this.path));
 
         for (const [path, imports] of this.imports.entries()) {
             const absolutePath = resolve(path);
@@ -219,9 +218,9 @@ export class Program {
             }
         }
 
-        Deno.chdir(prevDir);
+        chdir(prevDir);
 
-        return ok('()');
+        return ok('()' as const);
     }
 
     public asCoreDecls(): CoreDecl[] {
@@ -238,12 +237,12 @@ export class Program {
 export const parseProgram = async (path: string): Promise<Result<Program, string>> => {
     try {
         const absolutePath = resolve(path);
-        const source = await denoFileReader(absolutePath);
+        const source = await nodeFileReader(absolutePath);
         const decls = parse(source, program);
         if (isError(decls)) return decls;
 
         const prog = new Program(decls.value, absolutePath);
-        return bind(await prog.addImports(denoFileReader), () => ok(prog));
+        return bind(await prog.addImports(nodeFileReader), () => ok(prog));
     } catch (e) {
         return error(`Could not import "${path}": ${e}`);
     }

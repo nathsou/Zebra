@@ -1,8 +1,8 @@
-import { defined, sameElems } from "../Utils/Common.ts";
-import { Env } from "../Utils/Env.ts";
-import { Result } from "../Utils/Result.ts";
-import { nextTyVarId } from "./Context.ts";
-import { freeVarsEnv, freeVarsMonoTy, substituteMono, substOf } from "./Unification.ts";
+import { defined, sameElems } from "../Utils/Common";
+import { Env } from "../Utils/Env";
+import { Result } from "../Utils/Result";
+import { nextTyVarId } from "./Context";
+import { freeVarsEnv, freeVarsMonoTy, substituteMono, substOf } from "./Unification";
 
 // the type of monomorphic types
 export type MonoTy = TyVar | TyConst;

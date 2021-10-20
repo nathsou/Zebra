@@ -1,9 +1,8 @@
-import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
-import { TyConstVal as ValTyConst } from "../Interpreter/Value.ts";
-import { ConstantExpr } from "../Parser/Expr.ts";
-import { gen } from "../Utils/Common.ts";
-import { Maybe, None } from "../Utils/Maybe.ts";
-import { freshTyVar, isTyConst, MonoTy, PolyTy, polyTy, tyConst, tyVar } from "./Types.ts";
+import { TyConstVal as ValTyConst } from "../Interpreter/Value";
+import { ConstantExpr } from "../Parser/Expr";
+import { assert, gen } from "../Utils/Common";
+import { Maybe, None } from "../Utils/Maybe";
+import { freshTyVar, isTyConst, MonoTy, PolyTy, polyTy, tyConst, tyVar } from "./Types";
 
 // primitive types
 export const intTy = tyConst('Int');

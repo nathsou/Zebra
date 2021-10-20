@@ -1,0 +1,28 @@
+export declare type Symbols = keyof (typeof symbolRenameMapObj);
+declare const symbolRenameMapObj: {
+    '.': string;
+    '-': string;
+    '~': string;
+    '+': string;
+    '*': string;
+    '&': string;
+    '|': string;
+    '/': string;
+    '\\': string;
+    '^': string;
+    '%': string;
+    '\u00B0': string;
+    $: string;
+    '@': string;
+    '#': string;
+    ';': string;
+    ':': string;
+    _: string;
+    '=': string;
+    "'": string;
+    '>': string;
+    '<': string;
+    '!': string;
+};
+export declare const symbolRenameMap: Map<string, string>;
+export {};

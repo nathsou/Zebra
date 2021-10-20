@@ -1,6 +1,6 @@
-import { isNone, isSome, Maybe } from "../Utils/Maybe.ts";
-import { error, ok, Result } from "../Utils/Result.ts";
-import { Position, showPosition, Punctuation, Token, KeywordType, } from "./Token.ts";
+import { isNone, isSome, Maybe } from "../Utils/Maybe";
+import { error, ok, Result } from "../Utils/Result";
+import { Position, showPosition, Punctuation, Token, KeywordType, } from "./Token";
 
 const punctuations = new Map<string, Punctuation['type']>([
     ['(', 'lparen'],

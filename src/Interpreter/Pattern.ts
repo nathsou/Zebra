@@ -1,12 +1,12 @@
-import { context, nextVarId } from "../Inferencer/Context.ts";
-import { charTy, floatTy, intTy, tupleTy, uncurryFun } from "../Inferencer/FixedTypes.ts";
-import { freshInstance, freshTyVar, MonoTy, polyTy, PolyTy, showMonoTy, TypeEnv } from "../Inferencer/Types.ts";
-import { substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "../Inferencer/Unification.ts";
-import { VarExpr } from "../Parser/Expr.ts";
-import { defined } from "../Utils/Common.ts";
-import { Maybe, None } from "../Utils/Maybe.ts";
-import { bind, error, fold, isError, ok, Result } from "../Utils/Result.ts";
-import { Value } from "./Value.ts";
+import { context, nextVarId } from "../Inferencer/Context";
+import { charTy, floatTy, intTy, tupleTy, uncurryFun } from "../Inferencer/FixedTypes";
+import { freshInstance, freshTyVar, MonoTy, polyTy, PolyTy, showMonoTy, TypeEnv } from "../Inferencer/Types";
+import { substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "../Inferencer/Unification";
+import { VarExpr } from "../Parser/Expr";
+import { defined } from "../Utils/Common";
+import { Maybe, None } from "../Utils/Maybe";
+import { bind, error, fold, isError, ok, Result } from "../Utils/Result";
+import { Value } from "./Value";
 
 export type Pattern = Var | Fun;
 

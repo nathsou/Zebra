@@ -1,8 +1,8 @@
-import { CoreFuncDecl, showCoreDecl } from "../Core/CoreDecl.ts";
-import { canonicalizeTyVars, MonoTy, PolyTy, showMonoTy, showTyVar, TyClass, TyConst, TyVar } from "../Inferencer/Types.ts";
-import { Pattern, showPattern } from "../Interpreter/Pattern.ts";
+import { CoreFuncDecl, showCoreDecl } from "../Core/CoreDecl";
+import { canonicalizeTyVars, MonoTy, PolyTy, showMonoTy, showTyVar, TyClass, TyConst, TyVar } from "../Inferencer/Types";
+import { Pattern, showPattern } from "../Interpreter/Pattern";
 // Declarations are expressions affecting the global environment
-import { Expr, showExpr, VarExpr } from "./Expr.ts";
+import { Expr, showExpr, VarExpr } from "./Expr";
 
 export type Decl = FuncDecl | ExportDecl | ImportDecl | TypeDecl;
 

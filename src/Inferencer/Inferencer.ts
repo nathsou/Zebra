@@ -1,16 +1,15 @@
-import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
-import { CoreExpr, showCoreExpr } from "../Core/CoreExpr.ts";
-import { collectPatternSubst } from "../Interpreter/Pattern.ts";
-import { DataTypeDecl, InstanceDecl, TypeClassDecl, TypeDecl } from "../Parser/Decl.ts";
-import { VarExpr } from "../Parser/Expr.ts";
-import { Program } from "../Parser/Program.ts";
-import { defined, gen } from "../Utils/Common.ts";
-import { envAdd as envAddAux, envGet, envHas, envRem, envSum } from "../Utils/Env.ts";
-import { bind, error, fold, isError, isOk, ok, Result } from "../Utils/Result.ts";
-import { context, MethodName } from "./Context.ts";
-import { boolTy, constantTy, funReturnTy, funTy, unitTy } from "./FixedTypes.ts";
-import { canonicalizeTyVars, freshInstance, freshTyVar, generalizeTy, isTyConst, isTyVar, MonoTy, PolyTy, polyTy, showMonoTy, tyConst, TypeEnv, TyVar } from "./Types.ts";
-import { showSubst, substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "./Unification.ts";
+import { CoreExpr, showCoreExpr } from "../Core/CoreExpr";
+import { collectPatternSubst } from "../Interpreter/Pattern";
+import { DataTypeDecl, InstanceDecl, TypeClassDecl, TypeDecl } from "../Parser/Decl";
+import { VarExpr } from "../Parser/Expr";
+import { Program } from "../Parser/Program";
+import { assert, defined, gen } from "../Utils/Common";
+import { envAdd as envAddAux, envGet, envHas, envRem, envSum } from "../Utils/Env";
+import { bind, error, fold, isError, isOk, ok, Result } from "../Utils/Result";
+import { context, MethodName } from "./Context";
+import { boolTy, constantTy, funReturnTy, funTy, unitTy } from "./FixedTypes";
+import { canonicalizeTyVars, freshInstance, freshTyVar, generalizeTy, isTyConst, isTyVar, MonoTy, PolyTy, polyTy, showMonoTy, tyConst, TypeEnv, TyVar } from "./Types";
+import { showSubst, substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "./Unification";
 
 export type TypeError = string;
 export type TypeCheckerResult = Result<[MonoTy, TypeSubst], TypeError>;

@@ -108,4 +108,4 @@ normalize term rules = normalize' (term, True) rules;
 normalize' (t, True) rules = normalize' (reduce t rules) rules;
 normalize' (t, False) rules = t;
 
-main = show (normalize (Fun "Range" [Fun "Mult" [Fun "10" [], Fun "10" []]]) trs);
+main = show (normalize (Fun "Range" [Fun "Mult" [Fun "3" [], Fun "2" []]]) trs);

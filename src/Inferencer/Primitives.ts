@@ -1,7 +1,7 @@
-import { cache, mapOf } from "../Utils/Common.ts";
-import { emptyEnv, envAddMut } from "../Utils/Env.ts";
-import { boolTy, charTy, floatTy, funTy, intTy, stringTy } from "./FixedTypes.ts";
-import { polyTy, TypeEnv } from "./Types.ts";
+import { cache, mapOf } from "../Utils/Common";
+import { emptyEnv, envAddMut } from "../Utils/Env";
+import { boolTy, charTy, floatTy, funTy, intTy, stringTy } from "./FixedTypes";
+import { polyTy, TypeEnv } from "./Types";
 
 export type PrimitiveFunction = keyof (typeof primitivesObj);
 

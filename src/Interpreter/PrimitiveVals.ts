@@ -1,7 +1,7 @@
-import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
-import { PrimitiveFunction } from "../Inferencer/Primitives.ts";
-import { emptyEnv, envAddMut } from "../Utils/Env.ts";
-import { PrimitiveFuncVal, Value } from "./Value.ts";
+import { PrimitiveFunction } from "../Inferencer/Primitives";
+import { assert } from "../Utils/Common";
+import { emptyEnv, envAddMut } from "../Utils/Env";
+import { PrimitiveFuncVal, Value } from "./Value";
 
 const intBinaryOp = (op: (a: number, b: number) => number): PrimitiveFuncVal => {
     return {

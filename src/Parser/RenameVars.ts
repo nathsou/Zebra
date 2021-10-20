@@ -1,4 +1,4 @@
-import { Expr, varOf } from "./Expr.ts";
+import { Expr, varOf } from "./Expr";
 
 export const renameVars = (e: Expr, renameMap: { [x: string]: string }): Expr => {
     switch (e.type) {

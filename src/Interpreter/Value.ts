@@ -1,5 +1,5 @@
-import { CoreExpr, showCoreExpr } from "../Core/CoreExpr.ts";
-import { Env } from "../Utils/Env.ts";
+import { CoreExpr, showCoreExpr } from "../Core/CoreExpr";
+import { Env } from "../Utils/Env";
 
 export type ValEnv = Env<Value>;
 

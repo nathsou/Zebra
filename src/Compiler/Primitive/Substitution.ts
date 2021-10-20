@@ -1,6 +1,6 @@
-import { Dict, dictGet, dictHas } from "../../Utils/Common.ts";
-import { DecisionTree } from "../DecisionTrees/DecisionTree.ts";
-import { PrimExpr } from "./PrimitiveExpr.ts";
+import { Dict, dictGet, dictHas } from "../../Utils/Common";
+import { DecisionTree } from "../DecisionTrees/DecisionTree";
+import { PrimExpr } from "./PrimitiveExpr";
 
 export const substitutePrim = (
     e: PrimExpr,

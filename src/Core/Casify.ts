@@ -1,10 +1,9 @@
-import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
-import { isVar, patVarOfVar, varOfPatVar } from "../Interpreter/Pattern.ts";
-import { FuncDecl } from "../Parser/Decl.ts";
-import { CaseOfExpr, Expr, TyConstExpr, varOf } from "../Parser/Expr.ts";
-import { gen, mapValues } from "../Utils/Common.ts";
-import { CoreFuncDecl } from "./CoreDecl.ts";
-import { CoreCaseOfExpr, CoreExpr, CoreTyConstExpr } from "./CoreExpr.ts";
+import { isVar, patVarOfVar, varOfPatVar } from "../Interpreter/Pattern";
+import { FuncDecl } from "../Parser/Decl";
+import { CaseOfExpr, Expr, TyConstExpr, varOf } from "../Parser/Expr";
+import { assert, gen, mapValues } from "../Utils/Common";
+import { CoreFuncDecl } from "./CoreDecl";
+import { CoreCaseOfExpr, CoreExpr, CoreTyConstExpr } from "./CoreExpr";
 
 export const casifyFunctionDeclarations = (funcs: Map<string, FuncDecl[]>): Map<string, CoreFuncDecl> => {
     return mapValues(

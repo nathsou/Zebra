@@ -1,15 +1,14 @@
-import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
-import { primitives } from "../Inferencer/Primitives.ts";
-import { expandTy, MonoTy } from "../Inferencer/Types.ts";
-import { vars } from "../Interpreter/Pattern.ts";
-import { DataTypeDecl, InstanceDecl } from "../Parser/Decl.ts";
-import { VarExpr, varOf } from "../Parser/Expr.ts";
-import { Program } from "../Parser/Program.ts";
-import { appOf, lambdaOf } from "../Parser/Sugar.ts";
-import { decons, deepCopy, defined } from "../Utils/Common.ts";
-import { coreOf } from "./Casify.ts";
-import { CoreFuncDecl } from "./CoreDecl.ts";
-import { CoreExpr, CoreLetInExpr, CoreLetRecInExpr, CoreVarExpr } from "./CoreExpr.ts";
+import { primitives } from "../Inferencer/Primitives";
+import { expandTy, MonoTy } from "../Inferencer/Types";
+import { vars } from "../Interpreter/Pattern";
+import { DataTypeDecl, InstanceDecl } from "../Parser/Decl";
+import { VarExpr, varOf } from "../Parser/Expr";
+import { Program } from "../Parser/Program";
+import { appOf, lambdaOf } from "../Parser/Sugar";
+import { assert, decons, deepCopy, defined } from "../Utils/Common";
+import { coreOf } from "./Casify";
+import { CoreFuncDecl } from "./CoreDecl";
+import { CoreExpr, CoreLetInExpr, CoreLetRecInExpr, CoreVarExpr } from "./CoreExpr";
 
 type VarEnv = { [key: string]: true };
 type Graph<T> = Map<T, Set<T>>;

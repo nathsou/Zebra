@@ -1,4 +1,4 @@
-import { mapOf } from "../Utils/Common.ts";
+import { mapOf } from "../Utils/Common";
 
 export type Symbols = keyof (typeof symbolRenameMapObj);
 

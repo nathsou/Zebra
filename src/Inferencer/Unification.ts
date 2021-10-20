@@ -1,8 +1,8 @@
-import { defined, sameElems } from "../Utils/Common.ts";
-import { envMapRes } from "../Utils/Env.ts";
-import { bind, error, isError, ok, reduceResult, Result, Unit } from "../Utils/Result.ts";
-import { context } from "./Context.ts";
-import { isTyConst, isTyVar, MonoTy, monoTypesEq, polyTy, PolyTy, showMonoTy, showTyVar, TyConst, tyConst, TypeEnv, tyVar, TyVar } from "./Types.ts";
+import { defined, sameElems } from "../Utils/Common";
+import { envMapRes } from "../Utils/Env";
+import { bind, error, isError, ok, reduceResult, Result, Unit } from "../Utils/Result";
+import { context } from "./Context";
+import { isTyConst, isTyVar, MonoTy, monoTypesEq, polyTy, PolyTy, showMonoTy, showTyVar, TyConst, tyConst, TypeEnv, tyVar, TyVar } from "./Types";
 
 export type TypeSubst = Record<TyVar['value'], MonoTy>;
 

@@ -1,7 +1,7 @@
-import { Dict } from "../../Utils/Common.ts";
-import { showPrim } from "../Primitive/PrimitiveCompiler.ts";
-import { PrimExpr, PrimSubtermOccurence, PrimTyConstExpr } from "../Primitive/PrimitiveExpr.ts";
-import { AnyPat, IndexedOccurence } from "./DecisionTreeCompiler.ts";
+import { Dict } from "../../Utils/Common";
+import { showPrim } from "../Primitive/PrimitiveCompiler";
+import { PrimExpr, PrimSubtermOccurence, PrimTyConstExpr } from "../Primitive/PrimitiveExpr";
+import { AnyPat, IndexedOccurence } from "./DecisionTreeCompiler";
 
 export type Leaf = { type: 'leaf', action: PrimExpr, bindings: Dict<PrimSubtermOccurence> };
 export type Fail = { type: 'fail' };

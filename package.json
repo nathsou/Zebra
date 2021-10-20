@@ -1,0 +1,14 @@
+{
+  "name": "zebra-lang",
+  "version": "0.1.0",
+  "scripts": {
+    "typeCheck": "tsc --noEmit",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "typescript": "4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^16.11.1"
+  }
+}

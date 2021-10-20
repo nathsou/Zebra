@@ -1,3 +1,4 @@
+import "../prelude/Prelude.ze" (Eq, Ord, Num);
 
 data Bool = True | False;
 data List a = Nil | Cons a (List a);
@@ -50,4 +51,4 @@ mapMaybe f (Some x) = Some (f x);
 append [] bs = bs;
 append (a :: as) bs = a :: (append as bs);
 
-main = len (filter isPrime (range 1000));
+main = len (filter isPrime (range 100));

@@ -1,16 +1,16 @@
-import { casify, groupByHead, reducePatternMatchingToCaseOf } from "../Core/Casify.ts";
-import { nextTyVarId } from "../Inferencer/Context.ts";
-import { funTy } from "../Inferencer/FixedTypes.ts";
-import { MonoTy, PolyTy, polyTy, TyClass, TyConst, tyConst, typeVarNamer, TyVar } from "../Inferencer/Types.ts";
-import { freeVarsMonoTy, substituteMono } from "../Inferencer/Unification.ts";
-import { Pattern, patVarOf } from "../Interpreter/Pattern.ts";
-import { mapValues } from "../Utils/Common.ts";
-import { mapOrDefault } from "../Utils/Maybe.ts";
-import { error, okOrThrow } from "../Utils/Result.ts";
-import { alt, brackets, commas, keyword, leftassoc, many, map, maybeParens, oneOf, optional, parens, Parser, ParserRef, sepBy, seq, some, symbol, token } from "./Combinators.ts";
-import { Decl, FuncDecl, TypeClassDecl } from "./Decl.ts";
-import { CaseOfExpr, CaseOfExprCase, CharExpr, ConstantExpr, Expr, FloatExpr, IntegerExpr, TyConstExpr, VarExpr, varOf } from "./Expr.ts";
-import { appOf, lambdaOf, listOf } from "./Sugar.ts";
+import { casify, groupByHead, reducePatternMatchingToCaseOf } from "../Core/Casify";
+import { nextTyVarId } from "../Inferencer/Context";
+import { funTy } from "../Inferencer/FixedTypes";
+import { MonoTy, PolyTy, polyTy, TyClass, TyConst, tyConst, typeVarNamer, TyVar } from "../Inferencer/Types";
+import { freeVarsMonoTy, substituteMono } from "../Inferencer/Unification";
+import { Pattern, patVarOf } from "../Interpreter/Pattern";
+import { mapValues } from "../Utils/Common";
+import { mapOrDefault } from "../Utils/Maybe";
+import { error, okOrThrow } from "../Utils/Result";
+import { alt, brackets, commas, keyword, leftassoc, many, map, maybeParens, oneOf, optional, parens, Parser, ParserRef, sepBy, seq, some, symbol, token } from "./Combinators";
+import { Decl, FuncDecl, TypeClassDecl } from "./Decl";
+import { CaseOfExpr, CaseOfExprCase, CharExpr, ConstantExpr, Expr, FloatExpr, IntegerExpr, TyConstExpr, VarExpr, varOf } from "./Expr";
+import { appOf, lambdaOf, listOf } from "./Sugar";
 
 // https://www.haskell.org/onlinereport/syntax-iso.html
 

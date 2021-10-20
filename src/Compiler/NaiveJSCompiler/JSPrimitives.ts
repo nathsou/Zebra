@@ -1,5 +1,5 @@
-import { PrimitiveFunction } from "../../Inferencer/Primitives.ts";
-import { cache, mapOf } from "../../Utils/Common.ts";
+import { PrimitiveFunction } from "../../Inferencer/Primitives";
+import { cache, mapOf } from "../../Utils/Common";
 
 const plusInt = `
     function plusInt(a) {

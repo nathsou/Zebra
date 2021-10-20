@@ -1,7 +1,7 @@
-import { isSome, Maybe, None } from "../Utils/Maybe.ts";
-import { bind, error, isError, isOk, mapResult, ok, Result } from "../Utils/Result.ts";
-import { lex, LexerError } from "./Lexer.ts";
-import { KeywordType, showPosition, showToken, Tok, Token, TokenType } from "./Token.ts";
+import { isSome, Maybe, None } from "../Utils/Maybe";
+import { bind, error, isError, isOk, mapResult, ok, Result } from "../Utils/Result";
+import { lex, LexerError } from "./Lexer";
+import { KeywordType, showPosition, showToken, Tok, Token, TokenType } from "./Token";
 
 /**
  * type returned when parsing is unsuccessful

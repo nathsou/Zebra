@@ -1,4 +1,4 @@
-import { DecisionTree } from "../DecisionTrees/DecisionTree.ts";
+import { DecisionTree } from "../DecisionTrees/DecisionTree";
 
 // CoreExpr where CaseOfExpr is replaced by SwitchExpr
 export type PrimExpr = PrimAtomicExpr | PrimAppExpr | PrimIfThenElseExpr

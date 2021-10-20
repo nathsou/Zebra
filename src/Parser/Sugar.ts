@@ -1,6 +1,5 @@
-import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
-import { defined } from "../Utils/Common.ts";
-import { AppExpr, Expr, varOf } from "./Expr.ts";
+import { assert, defined } from "../Utils/Common";
+import { AppExpr, Expr, varOf } from "./Expr";
 
 type LambdaExpr<T, K> = { type: 'lambda', arg: K, body: T };
 

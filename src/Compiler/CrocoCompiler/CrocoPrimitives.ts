@@ -1,5 +1,5 @@
-import { PrimitiveFunction } from "../../Inferencer/Primitives.ts";
-import { cache, mapOf } from "../../Utils/Common.ts";
+import { PrimitiveFunction } from "../../Inferencer/Primitives";
+import { cache, mapOf } from "../../Utils/Common";
 
 const plusInt = 'ZePlusInt a b = a + b';
 const minusInt = 'ZeMinusInt a b = a - b';

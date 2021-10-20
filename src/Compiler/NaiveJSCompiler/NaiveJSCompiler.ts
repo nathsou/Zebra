@@ -1,15 +1,15 @@
-import { CoreDecl } from "../../Core/CoreDecl.ts";
-import { context } from "../../Inferencer/Context.ts";
-import { isPrimitiveFunc, PrimitiveFunction } from "../../Inferencer/Primitives.ts";
-import { lambdaOf } from "../../Parser/Sugar.ts";
-import { symbolRenameMap } from '../../Parser/Symbols.ts';
-import { defined, head, tail } from "../../Utils/Common.ts";
-import { DecisionTree } from "../DecisionTrees/DecisionTree.ts";
-import { IndexedOccurence } from "../DecisionTrees/DecisionTreeCompiler.ts";
-import { primitiveProgramOfCore } from "../Primitive/PrimitiveCompiler.ts";
-import { PrimDecl } from "../Primitive/PrimitiveDecl.ts";
-import { PrimExpr } from "../Primitive/PrimitiveExpr.ts";
-import { jsPrimitives } from "./JSPrimitives.ts";
+import { CoreDecl } from "../../Core/CoreDecl";
+import { context } from "../../Inferencer/Context";
+import { isPrimitiveFunc, PrimitiveFunction } from "../../Inferencer/Primitives";
+import { lambdaOf } from "../../Parser/Sugar";
+import { symbolRenameMap } from '../../Parser/Symbols';
+import { defined, head, tail } from "../../Utils/Common";
+import { DecisionTree } from "../DecisionTrees/DecisionTree";
+import { IndexedOccurence } from "../DecisionTrees/DecisionTreeCompiler";
+import { primitiveProgramOfCore } from "../Primitive/PrimitiveCompiler";
+import { PrimDecl } from "../Primitive/PrimitiveDecl";
+import { PrimExpr } from "../Primitive/PrimitiveExpr";
+import { jsPrimitives } from "./JSPrimitives";
 
 export const rename = (f: string): string => {
     if (f === 'eval') return 'eval_';

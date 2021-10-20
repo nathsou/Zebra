@@ -1,17 +1,17 @@
-import { CoreDecl, CoreFuncDecl } from "../Core/CoreDecl.ts";
-import { CoreExpr, CoreLetInExpr } from "../Core/CoreExpr.ts";
-import { funcDeclsDependencies, singleExprProgOf, usedFuncDecls } from "../Core/ExprOfFunDecls.ts";
-import { VarExpr, varOf } from "../Parser/Expr.ts";
-import { Program } from "../Parser/Program.ts";
-import { defined, find } from "../Utils/Common.ts";
-import { isNone } from "../Utils/Maybe.ts";
-import { bind, error, ok, Result } from "../Utils/Result.ts";
-import { clearContext } from "./Context.ts";
-import { inferExprType, registerTypeDecls, typeCheckInstances } from "./Inferencer.ts";
-import { monomorphizeProg } from "./Monomorphize.ts";
-import { primitiveEnv } from "./Primitives.ts";
-import { canonicalizeTyVars, MonoTy } from "./Types.ts";
-import { substCompose, TypeSubst } from "./Unification.ts";
+import { CoreDecl, CoreFuncDecl } from "../Core/CoreDecl";
+import { CoreExpr, CoreLetInExpr } from "../Core/CoreExpr";
+import { funcDeclsDependencies, singleExprProgOf, usedFuncDecls } from "../Core/ExprOfFunDecls";
+import { VarExpr, varOf } from "../Parser/Expr";
+import { Program } from "../Parser/Program";
+import { defined, find } from "../Utils/Common";
+import { isNone } from "../Utils/Maybe";
+import { bind, error, ok, Result } from "../Utils/Result";
+import { clearContext } from "./Context";
+import { inferExprType, registerTypeDecls, typeCheckInstances } from "./Inferencer";
+import { monomorphizeProg } from "./Monomorphize";
+import { primitiveEnv } from "./Primitives";
+import { canonicalizeTyVars, MonoTy } from "./Types";
+import { substCompose, TypeSubst } from "./Unification";
 
 const wrapMain = (main: CoreExpr, name: VarExpr): CoreLetInExpr => {
     return {

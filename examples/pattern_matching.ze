@@ -1,3 +1,6 @@
+import "../prelude/Prelude.ze" (
+    Eq, Ord, Num,
+);
 
 data Bool = True | False;
 data Maybe a = None | Some a;
@@ -13,9 +16,6 @@ len x0 = case x0 of
     | [] -> 0
     | (h :: tl) -> (len tl) + 1;
 
-and True True = True;
-and _ _ = False;
-
 range n = n :: (if n == 0 then [] else range (n - 1));
 
-main = len;
+main = len [1, 2, 3];

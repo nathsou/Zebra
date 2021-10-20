@@ -1,8 +1,8 @@
-import { naiveJsProgramOf } from "../Compiler/NaiveJSCompiler/NaiveJSCompiler.ts";
-import { typeCheck } from "../Inferencer/TypeCheck.ts";
-import { MonoTy } from "../Inferencer/Types.ts";
-import { parseProgram } from "../Parser/Program.ts";
-import { bind, ok, Result } from "../Utils/Result.ts";
+import { naiveJsProgramOf } from "../Compiler/NaiveJSCompiler/NaiveJSCompiler";
+import { typeCheck } from "../Inferencer/TypeCheck";
+import { MonoTy } from "../Inferencer/Types";
+import { parseProgram } from "../Parser/Program";
+import { bind, ok, Result } from "../Utils/Result";
 
 export const compileNaive = async (path: string): Promise<Result<[ty: MonoTy, js: string], string>> => {
     return bind(await parseProgram(path), prog => {

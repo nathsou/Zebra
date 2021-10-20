@@ -1,9 +1,9 @@
-import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
-import { clearContext } from "../src/Inferencer/Context.ts";
-import { funTy, intTy } from "../src/Inferencer/FixedTypes.ts";
-import { freshTyVar, polyTy, polyTypesEq } from "../src/Inferencer/Types.ts";
-import { substitutePoly, TypeSubst } from "../src/Inferencer/Unification.ts";
-import { isOk } from "../src/Utils/Result.ts";
+import { assert } from "https://deno.land/std@0.83.0/testing/asserts";
+import { clearContext } from "../src/Inferencer/Context";
+import { funTy, intTy } from "../src/Inferencer/FixedTypes";
+import { freshTyVar, polyTy, polyTypesEq } from "../src/Inferencer/Types";
+import { substitutePoly, TypeSubst } from "../src/Inferencer/Unification";
+import { isOk } from "../src/Utils/Result";
 
 Deno.test('substitutePoly', () => {
     const α = freshTyVar();

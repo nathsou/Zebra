@@ -1,17 +1,16 @@
-import { primitiveProgramOfCore } from "./Compiler/Primitive/PrimitiveCompiler.ts";
-import { showPrimDecl } from "./Compiler/Primitive/PrimitiveDecl.ts";
-import { showCoreDecl } from "./Core/CoreDecl.ts";
-import { compileCroco } from "./Evaluator/CrocoEvaluator.ts";
-import { compileNaive } from "./Evaluator/NaiveEvaluator.ts";
-import { typeCheck } from "./Inferencer/TypeCheck.ts";
-import { showOverloadedTy } from "./Inferencer/Types.ts";
-import { interpret } from "./Interpreter/Interpreter.ts";
-import { showValue } from "./Interpreter/Value.ts";
-import { parseProgram } from "./Parser/Program.ts";
-import { bind, error, isOk, ok, Result } from "./Utils/Result.ts";
+import { primitiveProgramOfCore } from "./Compiler/Primitive/PrimitiveCompiler";
+import { showPrimDecl } from "./Compiler/Primitive/PrimitiveDecl";
+import { showCoreDecl } from "./Core/CoreDecl";
+import { compileCroco } from "./Evaluator/CrocoEvaluator";
+import { compileNaive } from "./Evaluator/NaiveEvaluator";
+import { typeCheck } from "./Inferencer/TypeCheck";
+import { showOverloadedTy } from "./Inferencer/Types";
+import { interpret } from "./Interpreter/Interpreter";
+import { showValue } from "./Interpreter/Value";
+import { parseProgram } from "./Parser/Program";
+import { bind, error, isOk, ok, Result } from "./Utils/Result";
 
 const run = async (path: string, target: string): Promise<void> => {
-
     let out: Result<string, string> = error('');
 
     switch (target) {
@@ -74,13 +73,17 @@ const run = async (path: string, target: string): Promise<void> => {
     log(out.value);
 };
 
-const [path, target] = Deno.args;
+const [, , path, target] = process.argv;
 
 const usage = () => {
     console.info('usage: zebra src.ze [js/croco]');
-    Deno.exit(0);
+    process.exit(0);
 };
 
-if (path === undefined) usage();
+if (path === undefined) {
+    usage();
+}
 
-await run(path, target);
+(async () => {
+    await run(path, target);
+})();

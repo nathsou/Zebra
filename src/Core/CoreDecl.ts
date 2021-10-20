@@ -1,7 +1,7 @@
-import { canonicalizeTyVars, showMonoTy, showTyVar } from "../Inferencer/Types.ts";
-import { patVarOfVar } from "../Interpreter/Pattern.ts";
-import { Decl, showContext, TypeDecl } from "../Parser/Decl.ts";
-import { CoreExpr, CoreVarExpr, exprOfCore, showCoreExpr } from "./CoreExpr.ts";
+import { canonicalizeTyVars, showMonoTy, showTyVar } from "../Inferencer/Types";
+import { patVarOfVar } from "../Interpreter/Pattern";
+import { Decl, showContext, TypeDecl } from "../Parser/Decl";
+import { CoreExpr, CoreVarExpr, exprOfCore, showCoreExpr } from "./CoreExpr";
 
 export type CoreDecl = CoreFuncDecl | TypeDecl;
 

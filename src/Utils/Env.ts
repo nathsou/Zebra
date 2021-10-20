@@ -1,4 +1,4 @@
-import { isError, ok, Result } from "./Result.ts";
+import { isError, ok, Result } from "./Result";
 
 export type Env<T> = { readonly [variable: string]: T };
 

@@ -1,5 +1,5 @@
-import { VarExpr } from "../Parser/Expr.ts";
-import { MonoTy, PolyTy, TyVar } from "./Types.ts";
+import { VarExpr } from "../Parser/Expr";
+import { MonoTy, PolyTy, TyVar } from "./Types";
 
 export const nextVarId = (): number => context.varId++;
 export const nextTyVarId = (): number => context.tyVarId++;

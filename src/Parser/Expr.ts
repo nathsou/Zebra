@@ -1,5 +1,5 @@
-import { nextVarId } from "../Inferencer/Context.ts";
-import { Pattern, showPattern } from "../Interpreter/Pattern.ts";
+import { nextVarId } from "../Inferencer/Context";
+import { Pattern, showPattern } from "../Interpreter/Pattern";
 
 export type Expr =
     AtomicExpr |

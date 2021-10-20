@@ -1,4 +1,4 @@
-import { isNone, Maybe, None } from "./Maybe.ts";
+import { isNone, Maybe, None } from "./Maybe";
 
 export const partition = <T>(vals: T[], pred: (v: T) => boolean): [T[], T[]] => {
     const as: T[] = [];
@@ -232,3 +232,9 @@ export const addSet = <T, K>(m: Map<K, Set<T>>, key: K, ...values: T[]): void =>
         m.get(key)?.add(v);
     }
 };
+
+export function assert(test: boolean, message = ''): asserts test {
+    if (!test) {
+        throw new Error(`assertion failed: ${message}`);
+    }
+}

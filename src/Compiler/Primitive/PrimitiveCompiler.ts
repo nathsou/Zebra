@@ -1,12 +1,12 @@
-import { CoreDecl } from "../../Core/CoreDecl.ts";
-import { CoreExpr } from "../../Core/CoreExpr.ts";
-import { Program } from "../../Parser/Program.ts";
-import { gen } from "../../Utils/Common.ts";
-import { isSome, Maybe } from "../../Utils/Maybe.ts";
-import { showDecisionTree } from "../DecisionTrees/DecisionTree.ts";
-import { clauseMatrixOf, compileClauseMatrix } from "../DecisionTrees/DecisionTreeCompiler.ts";
-import { PrimDecl } from "./PrimitiveDecl.ts";
-import { PrimExpr } from "./PrimitiveExpr.ts";
+import { CoreDecl } from "../../Core/CoreDecl";
+import { CoreExpr } from "../../Core/CoreExpr";
+import { Program } from "../../Parser/Program";
+import { gen } from "../../Utils/Common";
+import { isSome, Maybe } from "../../Utils/Maybe";
+import { showDecisionTree } from "../DecisionTrees/DecisionTree";
+import { clauseMatrixOf, compileClauseMatrix } from "../DecisionTrees/DecisionTreeCompiler";
+import { PrimDecl } from "./PrimitiveDecl";
+import { PrimExpr } from "./PrimitiveExpr";
 
 export const primitiveProgramOfCore = (coreProg: CoreDecl[]): PrimDecl[] => {
     const decls: PrimDecl[] = [];

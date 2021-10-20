@@ -1,9 +1,9 @@
-import { crocoProgramOf } from "../Compiler/CrocoCompiler/CrocoCompiler.ts";
-import { declOfCore } from "../Core/CoreDecl.ts";
-import { typeCheck } from "../Inferencer/TypeCheck.ts";
-import { MonoTy } from "../Inferencer/Types.ts";
-import { parseProgram } from "../Parser/Program.ts";
-import { bind, ok, Result } from "../Utils/Result.ts";
+import { crocoProgramOf } from "../Compiler/CrocoCompiler/CrocoCompiler";
+import { declOfCore } from "../Core/CoreDecl";
+import { typeCheck } from "../Inferencer/TypeCheck";
+import { MonoTy } from "../Inferencer/Types";
+import { parseProgram } from "../Parser/Program";
+import { bind, ok, Result } from "../Utils/Result";
 
 export const compileCroco = async (path: string): Promise<Result<[ty: MonoTy, croco: string], string>> => {
     return bind(await parseProgram(path), prog => {

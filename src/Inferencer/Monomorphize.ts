@@ -1,15 +1,15 @@
-import { CoreFuncDecl } from "../Core/CoreDecl.ts";
-import { CoreExpr } from "../Core/CoreExpr.ts";
-import { context } from "../Inferencer/Context.ts";
-import { instanceMethodsTypes } from "../Inferencer/Inferencer.ts";
-import { expandTy, isTyOverloaded, MonoTy, showMonoTy } from "../Inferencer/Types.ts";
-import { directedUnify, substCompose, substituteMono, TypeSubst } from "../Inferencer/Unification.ts";
-import { InstanceDecl } from "../Parser/Decl.ts";
-import { VarExpr, varOf } from "../Parser/Expr.ts";
-import { Program } from "../Parser/Program.ts";
-import { lambdaOf } from "../Parser/Sugar.ts";
-import { defined } from "../Utils/Common.ts";
-import { bind, bind2, bind3, error, isError, isOk, ok, reduceResult, Result, Unit } from "../Utils/Result.ts";
+import { CoreFuncDecl } from "../Core/CoreDecl";
+import { CoreExpr } from "../Core/CoreExpr";
+import { context } from "../Inferencer/Context";
+import { instanceMethodsTypes } from "../Inferencer/Inferencer";
+import { expandTy, isTyOverloaded, MonoTy, showMonoTy } from "../Inferencer/Types";
+import { directedUnify, substCompose, substituteMono, TypeSubst } from "../Inferencer/Unification";
+import { InstanceDecl } from "../Parser/Decl";
+import { VarExpr, varOf } from "../Parser/Expr";
+import { Program } from "../Parser/Program";
+import { lambdaOf } from "../Parser/Sugar";
+import { defined } from "../Utils/Common";
+import { bind, bind2, bind3, error, isError, isOk, ok, reduceResult, Result, Unit } from "../Utils/Result";
 
 type ResolutionEnv = Map<string, [MonoTy, CoreExpr][]>;
 

@@ -1,5 +1,5 @@
-import { showPrim } from "./PrimitiveCompiler.ts";
-import { PrimExpr } from "./PrimitiveExpr.ts";
+import { showPrim } from "./PrimitiveCompiler";
+import { PrimExpr } from "./PrimitiveExpr";
 
 export type PrimDecl = PrimFuncDecl;
 

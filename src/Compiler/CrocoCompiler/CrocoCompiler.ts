@@ -1,13 +1,13 @@
-import { coreOf } from "../../Core/Casify.ts";
-import { coreExprFreeVars, varEnvOf } from "../../Core/ExprOfFunDecls.ts";
-import { isPrimitiveFunc, PrimitiveFunction, primitives } from "../../Inferencer/Primitives.ts";
-import { isVar, Pattern, vars } from "../../Interpreter/Pattern.ts";
-import { Decl } from "../../Parser/Decl.ts";
-import { Expr } from "../../Parser/Expr.ts";
-import { renameVars } from '../../Parser/RenameVars.ts';
-import { symbolRenameMap } from "../../Parser/Symbols.ts";
-import { defined } from "../../Utils/Common.ts";
-import { crocoPrimitives } from "./CrocoPrimitives.ts";
+import { coreOf } from "../../Core/Casify";
+import { coreExprFreeVars, varEnvOf } from "../../Core/ExprOfFunDecls";
+import { isPrimitiveFunc, PrimitiveFunction, primitives } from "../../Inferencer/Primitives";
+import { isVar, Pattern, vars } from "../../Interpreter/Pattern";
+import { Decl } from "../../Parser/Decl";
+import { Expr } from "../../Parser/Expr";
+import { renameVars } from '../../Parser/RenameVars';
+import { symbolRenameMap } from "../../Parser/Symbols";
+import { defined } from "../../Utils/Common";
+import { crocoPrimitives } from "./CrocoPrimitives";
 
 const camel = (f: string): string => {
     return `${f[0].toUpperCase()}${f.slice(1)}`;
@@ -16,6 +16,7 @@ const camel = (f: string): string => {
 const rename = (f: string): string => {
     if (f === 'main') return 'Main';
 
+    // @ts-ignore
     return `Ze${camel(f.replaceAll('_', ''))}`
         .split('')
         .map(c => symbolRenameMap.has(c) ?

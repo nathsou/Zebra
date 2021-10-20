@@ -1,3 +1,4 @@
+import "../prelude/Prelude.ze" (Eq, Num);
 
 data Bool = True | False;
 data List a = Nil | Cons a (List a);

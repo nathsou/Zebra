@@ -1,6 +1,6 @@
-import { freshTyVar, TyVar } from "../Inferencer/Types.ts";
-import { Pattern, patVarOfVar, showPattern } from "../Interpreter/Pattern.ts";
-import { Expr, VarExpr } from "../Parser/Expr.ts";
+import { freshTyVar, TyVar } from "../Inferencer/Types";
+import { Pattern, patVarOfVar, showPattern } from "../Interpreter/Pattern";
+import { Expr, VarExpr } from "../Parser/Expr";
 
 // export type T> = T & { ty: TyVar };
 

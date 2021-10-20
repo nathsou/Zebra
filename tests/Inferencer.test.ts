@@ -1,16 +1,16 @@
-import { assert } from "https://deno.land/std@0.83.0/testing/asserts.ts";
-import { casifyFunctionDeclarations, coreOf } from "../src/Core/Casify.ts";
-import { partitionDecls } from "../src/Core/CoreDecl.ts";
-import { singleExprProgOf } from "../src/Core/ExprOfFunDecls.ts";
-import { boolTy, funTy, intTy } from "../src/Inferencer/FixedTypes.ts";
-import { inferExprType, registerTypeDecls } from "../src/Inferencer/Inferencer.ts";
-import { MonoTy, polyTy, showMonoTy, tyConst, TypeEnv, tyVar } from "../src/Inferencer/Types.ts";
-import { unify } from "../src/Inferencer/Unification.ts";
-import { parse } from "../src/Parser/Combinators.ts";
-import { FuncDecl } from "../src/Parser/Decl.ts";
-import { expr, program } from "../src/Parser/Parser.ts";
-import { isSome, Maybe } from "../src/Utils/Maybe.ts";
-import { bind, isError, ok } from "../src/Utils/Result.ts";
+import { assert } from "https://deno.land/std@0.83.0/testing/asserts";
+import { casifyFunctionDeclarations, coreOf } from "../src/Core/Casify";
+import { partitionDecls } from "../src/Core/CoreDecl";
+import { singleExprProgOf } from "../src/Core/ExprOfFunDecls";
+import { boolTy, funTy, intTy } from "../src/Inferencer/FixedTypes";
+import { inferExprType, registerTypeDecls } from "../src/Inferencer/Inferencer";
+import { MonoTy, polyTy, showMonoTy, tyConst, TypeEnv, tyVar } from "../src/Inferencer/Types";
+import { unify } from "../src/Inferencer/Unification";
+import { parse } from "../src/Parser/Combinators";
+import { FuncDecl } from "../src/Parser/Decl";
+import { expr, program } from "../src/Parser/Parser";
+import { isSome, Maybe } from "../src/Utils/Maybe";
+import { bind, isError, ok } from "../src/Utils/Result";
 
 const gamma: TypeEnv = {
     'True': polyTy(boolTy),
