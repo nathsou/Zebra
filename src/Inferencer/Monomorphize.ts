@@ -75,7 +75,7 @@ const addInstanceToResolutionEnv = (
       addMapping(method, ty, e, renv);
     }
 
-    return ok('()');
+    return ok('()' as const);
   });
 };
 
@@ -172,7 +172,7 @@ const monomorphizeExpr = (e: CoreExpr, sig: TypeSubst, renv: ResolutionEnv): Res
         monomorphizeExpr(e.right, sig, renv),
         ([middle, right]) => {
           return ok({
-            type: 'let_in',
+            type: 'let_in' as const,
             left: e.left,
             middle,
             right
@@ -185,7 +185,7 @@ const monomorphizeExpr = (e: CoreExpr, sig: TypeSubst, renv: ResolutionEnv): Res
         monomorphizeExpr(e.right, sig, renv),
         ([middle, right]) => {
           return ok({
-            type: 'let_rec_in',
+            type: 'let_rec_in' as const,
             funName: e.funName,
             arg: e.arg,
             middle,
@@ -204,7 +204,7 @@ const monomorphizeExpr = (e: CoreExpr, sig: TypeSubst, renv: ResolutionEnv): Res
         monomorphizeExpr(e.elseBranch, sig, renv),
         ([cond, thenBranch, elseBranch]) => {
           return ok({
-            type: 'if_then_else',
+            type: 'if_then_else' as const,
             cond,
             thenBranch,
             elseBranch
@@ -219,7 +219,7 @@ const monomorphizeExpr = (e: CoreExpr, sig: TypeSubst, renv: ResolutionEnv): Res
         monomorphizeExpr(e.rhs, sig, renv),
         ([lhs, rhs]) => {
           return ok({
-            type: 'app',
+            type: 'app' as const,
             lhs,
             rhs
           });
@@ -230,7 +230,7 @@ const monomorphizeExpr = (e: CoreExpr, sig: TypeSubst, renv: ResolutionEnv): Res
     case 'lambda':
       return bind(monomorphizeExpr(e.body, sig, renv), body => {
         return ok({
-          type: 'lambda',
+          type: 'lambda' as const,
           arg: e.arg,
           body
         });
@@ -246,7 +246,7 @@ const monomorphizeExpr = (e: CoreExpr, sig: TypeSubst, renv: ResolutionEnv): Res
 
         return bind(cases, cases => {
           return ok({
-            type: 'case_of',
+            type: 'case_of' as const,
             arity: e.arity,
             value,
             cases
@@ -259,7 +259,7 @@ const monomorphizeExpr = (e: CoreExpr, sig: TypeSubst, renv: ResolutionEnv): Res
 
       return bind(args, args => {
         return ok({
-          type: 'tyconst',
+          type: 'tyconst' as const,
           name: e.name,
           args
         });

@@ -7,6 +7,7 @@ import { typeCheck } from "./Inferencer/TypeCheck";
 import { showOverloadedTy } from "./Inferencer/Types";
 import { interpret } from "./Interpreter/Interpreter";
 import { showValue } from "./Interpreter/Value";
+import { nodeFileSystem } from "./Parser/FileSystem/NodeFileSystem";
 import { parseProgram } from "./Parser/Program";
 import { bind, error, isOk, ok, Result } from "./Utils/Result";
 
@@ -15,7 +16,7 @@ const run = async (path: string, target: string): Promise<void> => {
 
   switch (target) {
     case undefined: {
-      out = bind(await parseProgram(path), prog => {
+      out = bind(await parseProgram(path, nodeFileSystem), prog => {
         return bind(interpret(prog), ([value, _type]) => {
           return ok(showValue(value));
         });
@@ -24,7 +25,7 @@ const run = async (path: string, target: string): Promise<void> => {
     }
 
     case 'type': {
-      out = bind(await parseProgram(path), prog => {
+      out = bind(await parseProgram(path, nodeFileSystem), prog => {
         return bind(typeCheck(prog), ({ ty }) => {
           return ok(showOverloadedTy(ty));
         });
@@ -33,7 +34,7 @@ const run = async (path: string, target: string): Promise<void> => {
     }
 
     case 'core':
-      out = bind(await parseProgram(path), prog => {
+      out = bind(await parseProgram(path, nodeFileSystem), prog => {
         return bind(typeCheck(prog), ({ coreProg }) => {
           return ok(coreProg.map(showCoreDecl).join('\n\n'));
         });
@@ -41,7 +42,7 @@ const run = async (path: string, target: string): Promise<void> => {
       break;
 
     case 'prim':
-      out = bind(await parseProgram(path), prog => {
+      out = bind(await parseProgram(path, nodeFileSystem), prog => {
         return bind(typeCheck(prog), ({ coreProg }) => {
           return ok(
             primitiveProgramOfCore(coreProg)
@@ -55,7 +56,7 @@ const run = async (path: string, target: string): Promise<void> => {
     case 'croco':
     case 'js': {
       const compile = target === 'js' ? compileNaive : compileCroco;
-      out = bind(await compile(path), ([ty, code]) => {
+      out = bind(await compile(path, nodeFileSystem), ([ty, code]) => {
         console.log(`${target === 'js' ? '//' : '--'} infered type: ${showOverloadedTy(ty)}`);
         return ok(code);
       });

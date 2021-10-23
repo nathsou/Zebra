@@ -1,6 +1,3 @@
-import { readFile } from 'fs/promises';
-import { dirname, resolve } from 'path';
-import { chdir, cwd } from 'process';
 import { casifyFunctionDeclarations, groupByHead } from "../Core/Casify";
 import { CoreDecl, CoreFuncDecl } from "../Core/CoreDecl";
 import { Dependencies, funcDeclsDependencies } from '../Core/ExprOfFunDecls';
@@ -9,13 +6,8 @@ import { Maybe } from "../Utils/Maybe";
 import { bind, bindWith, error, isError, ok, Result, Unit } from "../Utils/Result";
 import { parse } from "./Combinators";
 import { DataTypeDecl, Decl, FuncDecl, InstanceDecl, TypeClassDecl } from "./Decl";
+import { FileSystem } from './FileSystem/FileSystem';
 import { program } from "./Parser";
-
-export type FileReader = (path: string) => Promise<string>;
-
-export const nodeFileReader: FileReader = async (path: string) => {
-  return await readFile(path, 'utf8');
-};
 
 export class Program {
   public exports = new Set<string>();
@@ -28,9 +20,11 @@ export class Program {
   public variants = new Map<string, string>();
   public deps: Dependencies;
   public path: string;
+  public fs: FileSystem;
 
-  constructor(decls: Decl[], path: string) {
+  constructor(decls: Decl[], path: string, fs: FileSystem) {
     this.path = path;
+    this.fs = fs;
     const funcs: FuncDecl[] = [];
 
     for (const d of decls) {
@@ -164,9 +158,9 @@ export class Program {
     return ok('()' as const);
   }
 
-  public async addImports(reader: FileReader): Promise<Result<Unit, string>> {
+  public async addImports(): Promise<Result<Unit, string>> {
     const programs = new Map<string, Program>();
-    const res = await this.collectImports(reader, programs);
+    const res = await this.collectImports(programs);
 
     this.instances = this.instances
       .filter(inst => this.typeclasses.has(inst.class_));
@@ -174,23 +168,20 @@ export class Program {
     return res;
   }
 
-  private async collectImports(
-    reader: FileReader,
-    programs: Map<string, Program>
-  ): Promise<Result<Unit, string>> {
-    const prevDir = cwd();
-    chdir(dirname(this.path));
+  private async collectImports(programs: Map<string, Program>): Promise<Result<Unit, string>> {
+    const prevPath = this.fs.getPath();
+    this.fs.setPath(this.path);
 
     for (const [path, imports] of this.imports.entries()) {
-      const absolutePath = resolve(path);
+      const absolutePath = this.fs.resolve(path);
       try {
-        const source = await reader(absolutePath);
+        const source = await this.fs.readFile(absolutePath);
 
         const prog = programs.has(absolutePath) ?
           ok(defined(programs.get(absolutePath))) :
           bindWith(
             parse(source, program),
-            decls => new Program(decls, absolutePath)
+            decls => new Program(decls, absolutePath, this.fs)
           );
 
         if (isError(prog)) return prog;
@@ -199,10 +190,7 @@ export class Program {
           programs.set(absolutePath, prog.value);
         }
 
-        const addImportsRes = await prog.value.collectImports(
-          reader,
-          programs
-        );
+        const addImportsRes = await prog.value.collectImports(programs);
 
         if (isError(addImportsRes)) return addImportsRes;
 
@@ -214,11 +202,11 @@ export class Program {
         if (isError(gatherRes)) return gatherRes;
 
       } catch (e) {
-        return error(`Could not import "${absolutePath}"`);
+        return error(`Could not import "${absolutePath}": ${e}`);
       }
     }
 
-    chdir(prevDir);
+    this.fs.setPath(prevPath);
 
     return ok('()' as const);
   }
@@ -231,18 +219,17 @@ export class Program {
       ...this.instances
     ];
   }
-
 }
 
-export const parseProgram = async (path: string): Promise<Result<Program, string>> => {
+export const parseProgram = async (path: string, fs: FileSystem): Promise<Result<Program, string>> => {
   try {
-    const absolutePath = resolve(path);
-    const source = await nodeFileReader(absolutePath);
+    const absolutePath = fs.resolve(path);
+    const source = await fs.readFile(absolutePath);
     const decls = parse(source, program);
     if (isError(decls)) return decls;
 
-    const prog = new Program(decls.value, absolutePath);
-    return bind(await prog.addImports(nodeFileReader), () => ok(prog));
+    const prog = new Program(decls.value, absolutePath, fs);
+    return bind(await prog.addImports(), () => ok(prog));
   } catch (e) {
     return error(`Could not import "${path}": ${e}`);
   }

@@ -202,13 +202,7 @@ export const sameElems = <T>(a: T[], b: T[]): boolean => {
 };
 
 export const mapOf = <T>(obj: { [key: string]: T }): Map<string, T> => {
-  const map = new Map<string, T>();
-
-  for (const [key, val] of Object.entries(obj)) {
-    map.set(key, val);
-  }
-
-  return map;
+  return new Map(Object.entries(obj));
 };
 
 export const cache = <T>(f: () => T): () => T => {

@@ -73,7 +73,7 @@ export function* lex(input: string): Iterable<Result<Token, LexerError>> {
         lookahead(keyword.length + 1) === `${keyword} ` ||
         lookahead(keyword.length + 1) === `${keyword}\n`
       ) {
-        yield ok({ type: 'keyword', value: keyword, ...pos });
+        yield ok({ type: 'keyword' as const, value: keyword, ...pos });
         advance(keyword.length);
         continue lexerLoop;
       }
@@ -96,7 +96,7 @@ export function* lex(input: string): Iterable<Result<Token, LexerError>> {
       // skip the closing '
       advance();
 
-      yield ok({ type: 'char', value: chr, ...pos });
+      yield ok({ type: 'char' as const, value: chr, ...pos });
       continue;
     }
 
@@ -119,7 +119,7 @@ export function* lex(input: string): Iterable<Result<Token, LexerError>> {
       // skip the closing '
       advance();
 
-      yield ok({ type: 'string', value: str, ...pos });
+      yield ok({ type: 'string' as const, value: str, ...pos });
       continue;
     }
 
@@ -131,7 +131,7 @@ export function* lex(input: string): Iterable<Result<Token, LexerError>> {
         advance();
       } while (/[a-zA-Z0-9_']/.test(current() ?? ''));
 
-      yield ok({ type: 'variable', name: f, ...pos });
+      yield ok({ type: 'variable' as const, name: f, ...pos });
       continue;
     }
 
@@ -143,7 +143,7 @@ export function* lex(input: string): Iterable<Result<Token, LexerError>> {
         advance();
       } while (/[a-zA-Z0-9_]/.test(current() ?? ''));
 
-      yield ok({ type: 'identifier', name: f, ...pos });
+      yield ok({ type: 'identifier' as const, name: f, ...pos });
       continue;
     }
 
@@ -163,7 +163,7 @@ export function* lex(input: string): Iterable<Result<Token, LexerError>> {
         advance();
       } while (/[!#$%&*+.\/<=>\?@\\^\|\-~]/.test(current() ?? ''));
 
-      yield ok({ type: 'symbol', name: symb, ...pos });
+      yield ok({ type: 'symbol' as const, name: symb, ...pos });
       continue;
     }
 
@@ -190,9 +190,9 @@ export function* lex(input: string): Iterable<Result<Token, LexerError>> {
       }
 
       if (isFloat) {
-        yield ok({ type: 'float', value: parseFloat(n), ...pos });
+        yield ok({ type: 'float' as const, value: parseFloat(n), ...pos });
       } else {
-        yield ok({ type: 'integer', value: parseInt(n), ...pos });
+        yield ok({ type: 'integer' as const, value: parseInt(n), ...pos });
       }
 
       continue;

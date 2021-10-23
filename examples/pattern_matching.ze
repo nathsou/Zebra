@@ -1,6 +1,4 @@
-import "../prelude/Prelude.ze" (
-    Eq, Ord, Num,
-);
+import "../prelude/Prelude.ze" (Num, Eq, Ord, List);
 
 data Bool = True | False;
 data Maybe a = None | Some a;

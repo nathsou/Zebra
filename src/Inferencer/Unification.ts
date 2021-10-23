@@ -38,7 +38,7 @@ const propagateClasses = (
     }
   }
 
-  return ok('()');
+  return ok('()' as const);
 };
 
 const propagateClassTyConst = (
@@ -52,7 +52,7 @@ const propagateClassTyConst = (
     propagateClasses([class_], arg);
   }
 
-  return ok('()');
+  return ok('()' as const);
 };
 
 const findInstanceContext = (
@@ -68,7 +68,7 @@ const findInstanceContext = (
     return error(`no instance of class ${class_} found for ${ctor}`);
   }
 
-  return ok('()');
+  return ok('()' as const);
 };
 
 export function substituteMono(x: TyVar, sig: TypeSubst, excluded?: TyVar['value'][]): Result<MonoTy, string>;

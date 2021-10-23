@@ -46,7 +46,7 @@ const evalExpr = (expr: CoreExpr, env: ValEnv): EvalResult => {
       }
     case 'tyconst':
       return bind(mapResult(expr.args.map(e => evalExpr(e, env)), x => x), args => {
-        return ok({ type: 'tyconst', name: expr.name, args });
+        return ok({ type: 'tyconst' as const, name: expr.name, args });
       });
     case 'if_then_else':
       const { cond, thenBranch, elseBranch } = expr;
@@ -60,11 +60,11 @@ const evalExpr = (expr: CoreExpr, env: ValEnv): EvalResult => {
     case 'constant':
       switch (expr.kind) {
         case 'integer':
-          return ok({ type: 'int', value: expr.value });
+          return ok({ type: 'int' as const, value: expr.value });
         case 'float':
-          return ok({ type: 'float', value: expr.value });
+          return ok({ type: 'float' as const, value: expr.value });
         case 'char':
-          return ok({ type: 'char', value: expr.value });
+          return ok({ type: 'char' as const, value: expr.value });
       }
     case 'let_in':
       return bind(evalExpr(expr.middle, env), val => {
@@ -83,7 +83,7 @@ const evalExpr = (expr: CoreExpr, env: ValEnv): EvalResult => {
       const env2 = envAdd(env, expr.funName.name, recvar);
       return evalExpr(expr.right, env2);
     case 'lambda':
-      return ok({ type: 'closure', arg: expr.arg.name, body: expr.body, env });
+      return ok({ type: 'closure' as const, arg: expr.arg.name, body: expr.body, env });
     case 'app':
 
       return bind(evalExpr(expr.lhs, env), f => {
@@ -193,11 +193,11 @@ export const registerDecl = (decls: CoreDecl[]): Result<ValEnv, EvalError> => {
   return ok(env);
 };
 
-export const interpret = (prog: Program): Result<[value: Value, type: MonoTy], string> => {
+export const interpret = (prog: Program): Result<readonly [value: Value, type: MonoTy], string> => {
   return bind(typeCheck(prog), ({ ty, main, coreProg }) => {
     return bind(registerDecl(coreProg), env => {
       return bind(evalExpr(main.body, env), res => {
-        return ok([res, ty]);
+        return ok([res, ty] as const);
       });
     });
   });

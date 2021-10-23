@@ -12,7 +12,7 @@ import { canonicalizeTyVars, freshInstance, freshTyVar, generalizeTy, isTyConst,
 import { showSubst, substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "./Unification";
 
 export type TypeError = string;
-export type TypeCheckerResult = Result<[MonoTy, TypeSubst], TypeError>;
+export type TypeCheckerResult = Result<readonly [MonoTy, TypeSubst], TypeError>;
 
 /**
  * infers the most general monomorphic type of an expression
@@ -29,7 +29,7 @@ export const inferExprType = (
     }
 
     return bind(substituteMono(sig[tau.value], sig), ty => {
-      return ok([ty, sig]);
+      return ok([ty, sig] as const);
     });
   });
 };

@@ -46,7 +46,7 @@ const parserOf = <T>(p: AnyParser<T>): Parser<T> => {
   return p;
 };
 
-// could variatic tuple types help here?
+// could variadic tuple types help here?
 export function seq<A>(a: AnyParser<A>): Parser<[A]>;
 export function seq<A, B>(a: AnyParser<A>, b: AnyParser<B>): Parser<[A, B]>;
 export function seq<A, B, C>(a: AnyParser<A>, b: AnyParser<B>, c: AnyParser<C>): Parser<[A, B, C]>;
