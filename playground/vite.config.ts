@@ -5,7 +5,7 @@ import { resolve } from 'path';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [reactRefresh()],
-  base: '/zebra/',
+  base: '/Zebra/',
   assetsInclude: ['ze'],
   resolve: {
     alias: {
