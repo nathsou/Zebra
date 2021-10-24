@@ -4,6 +4,9 @@ import { compileNaive } from '../../src/Evaluator/NaiveEvaluator';
 import { createVirtualFileSystem } from '../../src/Parser/FileSystem/VirtualFileSystem';
 import { prelude, samples } from './samples';
 import { webWorkerEval } from './webWorkerEvaluator';
+import 'ace-builds/src-noconflict/mode-haskell';
+import 'ace-builds/src-noconflict/theme-xcode';
+import 'ace-builds/src-noconflict/theme-dracula';
 
 const fs = createVirtualFileSystem('/examples/', {
   '/prelude/Bool.ze': prelude.bool,
@@ -17,6 +20,22 @@ const fs = createVirtualFileSystem('/examples/', {
 
 type Value = number | string | { name: string, args: Value[] };
 
+const showList = (
+  lst: { name: string, args: Value[] }
+) => {
+  let head: Value = lst;
+  const terms: string[] = [];
+  while (typeof head === 'object' && head.name === 'Cons') {
+    if (head.name === 'Cons') {
+      const [h] = head.args;
+      terms.push(showValue(h));
+      head = head.args[1];
+    }
+  }
+
+  return `[${terms.join(', ')}]`;
+};
+
 const showValue = (val: Value): string => {
   switch (typeof val) {
     case 'number':
@@ -24,7 +43,18 @@ const showValue = (val: Value): string => {
     case 'string':
       return `"${val}"`;
     case 'object':
-      return `${val.name}(${val.args.map(showValue).join(', ')})`;
+      switch (val.name) {
+        case 'Nil':
+          return '[]';
+        case 'Cons':
+          return showList(val);
+        default:
+          if (val.args.length === 0) {
+            return val.name;
+          }
+
+          return `${val.name}(${val.args.map(showValue).join(', ')})`;
+      }
   }
 
   return JSON.stringify(val, null, 2);
@@ -32,6 +62,7 @@ const showValue = (val: Value): string => {
 
 const actions: ButtonActions = {
   Run: async (code, setOutput) => {
+    setOutput('...running');
     fs.addFile('/examples/tmp.ze', code);
     const res = await compileNaive('/examples/tmp.ze', fs);
 
@@ -61,5 +92,12 @@ export const App = () => (
     actions={actions}
     samples={samples}
     aceMode='haskell'
+    lightTheme='xcode'
+    darkTheme='dracula'
+    outputOptions={{
+      wrap: true,
+      tabSize: 2,
+      showLineNumbers: true,
+    }}
   />
 );

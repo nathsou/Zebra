@@ -485,10 +485,10 @@ estree-walker@^2.0.1:
   resolved "https://registry.yarnpkg.com/estree-walker/-/estree-walker-2.0.2.tgz#52f010178c2a4c117a7757cfe942adb7d2da4cac"
   integrity sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w==
 
-explang@^1.0.7:
-  version "1.0.7"
-  resolved "https://registry.yarnpkg.com/explang/-/explang-1.0.7.tgz#3143fd16a38c92c51650d66e6f99b442fce3df2d"
-  integrity sha512-oCq2DrPbMtfzZxlReelZwLsPS5eQIodNqdh+YH+lTWaqrY+9Gtm29csHou4AQp5kyC2LyZIMfFkOO9IIHkZqoA==
+explang@^1.0.10:
+  version "1.0.10"
+  resolved "https://registry.yarnpkg.com/explang/-/explang-1.0.10.tgz#a1a74690a444e53964976ecb8a7d3b1093f52bf0"
+  integrity sha512-f2kYlSc6d84/XH/EfzF8Bk7mE9/eumLJ8s6tXDynm+o6t5ehZUMcxY9Vvj7bCIq+y1tp8VLY71+/zqDO0BE/Sg==
 
 fsevents@~2.3.2:
   version "2.3.2"
