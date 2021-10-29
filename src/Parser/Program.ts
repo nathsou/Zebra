@@ -1,7 +1,7 @@
 import { casifyFunctionDeclarations, groupByHead } from "../Core/Casify";
 import { CoreDecl, CoreFuncDecl } from "../Core/CoreDecl";
 import { Dependencies, funcDeclsDependencies } from '../Core/ExprOfFunDecls';
-import { assert, defined } from "../Utils/Common";
+import { assert } from "../Utils/Common";
 import { Maybe } from "../Utils/Maybe";
 import { bind, bindWith, error, isError, ok, Result, Unit } from "../Utils/Result";
 import { parse } from "./Combinators";
@@ -76,8 +76,8 @@ export class Program {
     assert(!this.funcs.has(name));
     assert(p.funcs.has(name));
 
-    this.funcs.set(name, defined(p.funcs.get(name)));
-    this.coreFuncs.set(name, defined(p.coreFuncs.get(name)));
+    this.funcs.set(name, p.funcs.get(name)!);
+    this.coreFuncs.set(name, p.coreFuncs.get(name)!);
   }
 
   private gatherImports(
@@ -115,7 +115,7 @@ export class Program {
     }
 
     while (stack.length !== 0) {
-      const f = defined(stack.pop());
+      const f = stack.pop()!;
       if (imported.has(f)) {
         continue;
       }
@@ -137,16 +137,16 @@ export class Program {
 
       } else if (p.datatypes.has(f)) {
         if (!this.datatypes.has(f)) {
-          this.datatypes.set(f, defined(p.datatypes.get(f)));
+          this.datatypes.set(f, p.datatypes.get(f)!);
         }
       } else if (p.typeclasses.has(f)) {
         if (!this.typeclasses.has(f)) {
-          this.typeclasses.set(f, defined(p.typeclasses.get(f)));
+          this.typeclasses.set(f, p.typeclasses.get(f)!);
         }
       } else if (p.variants.has(f)) {
-        const datatype = defined(p.variants.get(f));
+        const datatype = p.variants.get(f)!;
         if (!this.datatypes.has(datatype)) {
-          this.datatypes.set(datatype, defined(p.datatypes.get(datatype)));
+          this.datatypes.set(datatype, p.datatypes.get(datatype)!);
         }
       } else {
         return error(`'${f}' is not defined in "${p.path}"`);
@@ -178,7 +178,7 @@ export class Program {
         const source = await this.fs.readFile(absolutePath);
 
         const prog = programs.has(absolutePath) ?
-          ok(defined(programs.get(absolutePath))) :
+          ok(programs.get(absolutePath)!) :
           bindWith(
             parse(source, program),
             decls => new Program(decls, absolutePath, this.fs)

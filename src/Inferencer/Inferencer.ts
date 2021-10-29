@@ -3,7 +3,7 @@ import { collectPatternSubst } from "../Interpreter/Pattern";
 import { DataTypeDecl, InstanceDecl, TypeClassDecl, TypeDecl } from "../Parser/Decl";
 import { VarExpr } from "../Parser/Expr";
 import { Program } from "../Parser/Program";
-import { assert, defined, gen } from "../Utils/Common";
+import { assert, gen } from "../Utils/Common";
 import { envAdd as envAddAux, envGet, envHas, envRem, envSum } from "../Utils/Env";
 import { bind, error, fold, isError, isOk, ok, Result } from "../Utils/Result";
 import { context, MethodName } from "./Context";
@@ -84,8 +84,8 @@ const collectExprTypeSubsts = (
       const varTy = inEnv ?
         envGet(env, expr.name) :
         isDataType ?
-          defined(context.datatypes.get(expr.name)) :
-          defined(context.typeClassMethods.get(expr.name));
+          context.datatypes.get(expr.name)! :
+          context.typeClassMethods.get(expr.name)!;
 
       if (isTyClassMethod && !inEnv) {
         context.typeClassMethodsOccs.set(expr.id, [tau, expr.name]);
@@ -180,7 +180,7 @@ const collectExprTypeSubsts = (
     }
     case 'tyconst': {
       if (context.datatypes.has(expr.name)) {
-        const constructorTy = defined(context.datatypes.get(expr.name));
+        const constructorTy = context.datatypes.get(expr.name)!;
 
         // the type of the variant is the last type
         // of the variant constructor
@@ -326,13 +326,13 @@ export const instanceMethodsTypes = (inst: InstanceDecl): Result<Map<MethodName,
       return error(`cannot define an instance for '${showMonoTy(inst.ty)}', type class '${inst.class_}' not found.`);
     }
 
-    const class_ = defined(context.typeclasses.get(inst.class_));
+    const class_ = context.typeclasses.get(inst.class_)!;
 
     if (!class_.methods.has(method)) {
       return error(`'${method}' is not a valid method of type class '${inst.class_}'`);
     }
 
-    const instMethodTy_ = defined(class_.methods.get(method));
+    const instMethodTy_ = class_.methods.get(method)!;
     const instMethodTy = replaceTyVar(instMethodTy_.ty, class_.tyVar, inst.ty);
 
     methodsTys.set(method, instMethodTy);
@@ -352,8 +352,8 @@ export const typeCheckInstances = (instances: InstanceDecl[]): Result<TypeSubst,
       if (!inst.defs.has(method)) {
         return error(`type class instance for '${inst.class_} ${showMonoTy(ty)}' is missing method '${method}'`);
       }
-      const [tyVar] = defined(inst.defs.get(method));
-      const [_, inferedTy] = defined(context.identifiers.get(tyVar));
+      const [tyVar] = inst.defs.get(method)!;
+      const [_, inferedTy] = context.identifiers.get(tyVar)!;
 
       const sig = unify(ty, inferedTy.ty);
 

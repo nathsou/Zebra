@@ -1,4 +1,4 @@
-import { assert, defined } from "../Utils/Common";
+import { assert } from "../Utils/Common";
 import { AppExpr, Expr, varOf } from "./Expr";
 
 type LambdaExpr<T, K> = { type: 'lambda', arg: K, body: T };
@@ -40,7 +40,7 @@ export const cons = (vals: Expr[]): Expr => {
 export const appOf = (...exprs: Expr[]): AppExpr => {
   assert(exprs.length > 1);
 
-  const e = defined(exprs.pop());
+  const e = exprs.pop()!;
 
   return {
     type: 'app',

@@ -3,7 +3,7 @@ import { context } from "../../Inferencer/Context";
 import { isPrimitiveFunc, PrimitiveFunction } from "../../Inferencer/Primitives";
 import { lambdaOf } from "../../Parser/Sugar";
 import { symbolRenameMap } from '../../Parser/Symbols';
-import { defined, head, tail } from "../../Utils/Common";
+import { head, tail } from "../../Utils/Common";
 import { DecisionTree } from "../DecisionTrees/DecisionTree";
 import { IndexedOccurence } from "../DecisionTrees/DecisionTreeCompiler";
 import { primitiveProgramOfCore } from "../Primitive/PrimitiveCompiler";
@@ -39,7 +39,7 @@ export const naiveJsProgramOf = (prog: CoreDecl[]): string => {
   }
 
   const primitives = [...usedPrimitives]
-    .map(f => defined(jsPrimitives().get(f)).trim());
+    .map(f => jsPrimitives().get(f)!.trim());
 
   return [primitives, out].map(l => l.join('\n\n')).join('\n\n');
 };

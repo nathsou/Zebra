@@ -171,15 +171,6 @@ export const mapValues = <K, V, U>(m: Map<K, V>, f: (v: V, k: K) => U): Map<K, U
   return m2;
 };
 
-// use only when we know for sure that a value is defined
-export const defined = <T>(v: T | undefined): T => {
-  if (v === undefined) {
-    throw new Error(`called 'defined' on an undefined value`);
-  } else {
-    return v;
-  }
-};
-
 export const find = <T>(vals: T[], pred: (v: T) => boolean): Maybe<T> => {
   for (const v of vals) {
     if (pred(v)) return v;

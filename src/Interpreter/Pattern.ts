@@ -3,7 +3,6 @@ import { charTy, floatTy, intTy, tupleTy, uncurryFun } from "../Inferencer/Fixed
 import { freshInstance, freshTyVar, MonoTy, polyTy, PolyTy, showMonoTy, TypeEnv } from "../Inferencer/Types";
 import { substCompose, substituteEnv, substituteMono, TypeSubst, unify } from "../Inferencer/Unification";
 import { VarExpr } from "../Parser/Expr";
-import { defined } from "../Utils/Common";
 import { Maybe, None } from "../Utils/Maybe";
 import { bind, error, fold, isError, ok, Result } from "../Utils/Result";
 import { Value } from "./Value";
@@ -58,7 +57,7 @@ const unifyPatternMany = (eqs: Array<[Pattern, Value]>): Maybe<ValSubst> => {
   const sig: ValSubst = {};
 
   while (eqs.length > 0) {
-    const [p, v] = defined(eqs.pop());
+    const [p, v] = eqs.pop()!;
 
 
     if (isVar(p)) { // Eliminate
@@ -122,7 +121,7 @@ export const collectPatternSubst = (
   if (isVar(p)) {
     // if this is a datatype variant
     if (context.datatypes.has(p.value)) {
-      const variantTy = defined(context.datatypes.get(p.value));
+      const variantTy = context.datatypes.get(p.value)!;
       return bind(freshInstance(variantTy), freshTy => {
         return checkedUnify(tau, freshTy, p);
       });
@@ -162,13 +161,13 @@ export const collectPatternSubst = (
 
   const constructorTy = p.name === 'tuple' ?
     tupleTy(p.args.length) :
-    defined(context.datatypes.get(p.name));
+    context.datatypes.get(p.name)!;
 
   const freshCtorTy = freshInstance(constructorTy);
   if (isError(freshCtorTy)) return freshCtorTy;
 
   const tys = uncurryFun(freshCtorTy.value);
-  const retTy = defined(tys.pop());
+  const retTy = tys.pop()!;
 
   const res = fold(tys, ([sig_i, gamma_i], tau_i, i) => {
     return bind(substituteMono(tau_i, sig_i), sig_i_tau_i => {

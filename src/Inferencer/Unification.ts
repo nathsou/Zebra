@@ -1,4 +1,4 @@
-import { defined, sameElems } from "../Utils/Common";
+import { sameElems } from "../Utils/Common";
 import { envMapRes } from "../Utils/Env";
 import { bind, error, isError, ok, reduceResult, Result, Unit } from "../Utils/Result";
 import { context } from "./Context";
@@ -206,7 +206,7 @@ const unifyMany = (
   const sig: TypeSubst = {};
 
   while (eqs.length > 0) {
-    const [s, t] = defined(eqs.pop());
+    const [s, t] = eqs.pop()!;
 
     if (monoTypesEq(s, t)) { // Delete
       continue;

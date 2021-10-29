@@ -3,7 +3,7 @@ import { CoreExpr, CoreLetInExpr } from "../Core/CoreExpr";
 import { funcDeclsDependencies, singleExprProgOf, usedFuncDecls } from "../Core/ExprOfFunDecls";
 import { VarExpr, varOf } from "../Parser/Expr";
 import { Program } from "../Parser/Program";
-import { defined, find } from "../Utils/Common";
+import { find } from "../Utils/Common";
 import { isNone } from "../Utils/Maybe";
 import { bind, error, ok, Result } from "../Utils/Result";
 import { clearContext } from "./Context";
@@ -26,7 +26,7 @@ const reorderFuncs = (funcs: CoreFuncDecl[], order: string[]): CoreFuncDecl[] =>
   const funcsByName = new Map(funcs.map(d => [d.funName.name, d]));
   const reordered = order
     .filter(f => funcsByName.has(f))
-    .map(f => defined(funcsByName.get(f)));
+    .map(f => funcsByName.get(f)!);
 
   return reordered;
 };
@@ -72,7 +72,7 @@ export const typeCheck = (prog: Program): Result<{
 
           return ok({
             ty: canonicalizeTyVars(ty),
-            main: defined(find(mono, f => f.funName.name === 'main')),
+            main: find(mono, f => f.funName.name === 'main')!,
             coreProg: [...prog.datatypes.values(), ...reorderd],
             singleExprProg,
             sig: sig12

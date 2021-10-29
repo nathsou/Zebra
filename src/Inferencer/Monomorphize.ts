@@ -8,7 +8,6 @@ import { InstanceDecl } from "../Parser/Decl";
 import { VarExpr, varOf } from "../Parser/Expr";
 import { Program } from "../Parser/Program";
 import { lambdaOf } from "../Parser/Sugar";
-import { defined } from "../Utils/Common";
 import { bind, bind2, bind3, error, isError, isOk, ok, reduceResult, Result, Unit } from "../Utils/Result";
 
 type ResolutionEnv = Map<string, [MonoTy, CoreExpr][]>;
@@ -69,7 +68,7 @@ const addInstanceToResolutionEnv = (
 ): Result<Unit, string> => {
   return bind(instanceMethodsTypes(inst), tys => {
     for (const [method, ty] of tys.entries()) {
-      const [_, decl] = defined(inst.defs.get(method));
+      const [_, decl] = inst.defs.get(method)!;
       const e = decl.args.length > 0 ? lambdaOf(decl.args, decl.body) : decl.body;
 
       addMapping(method, ty, e, renv);
@@ -141,7 +140,7 @@ const identifierType = (v: VarExpr, sig: TypeSubst): Result<MonoTy, string> => {
     return error(`identifier ${v.name} (${v.id}) does not have type information`);
   }
 
-  const [_, ty_] = defined(context.identifiers.get(v.id));
+  const [_, ty_] = context.identifiers.get(v.id)!;
   const ty = substituteMono(ty_.ty, sig);
   if (isError(ty)) return ty;
 

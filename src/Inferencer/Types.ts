@@ -1,4 +1,4 @@
-import { defined, sameElems } from "../Utils/Common";
+import { sameElems } from "../Utils/Common";
 import { Env } from "../Utils/Env";
 import { Result } from "../Utils/Result";
 import { nextTyVarId } from "./Context";
@@ -41,7 +41,7 @@ export const typeVarNamer = () => {
         memo.set(name, tyVar(nextTyVarId()));
       }
 
-      return defined(memo.get(name));
+      return memo.get(name)!;
     },
     reset: (): void => {
       memo.clear();
@@ -203,7 +203,7 @@ export const showTypeEnv = (env: TypeEnv): string => {
 export const canonicalizeTyVars = (t: MonoTy, renameMap: Map<TyVar['value'], TyVar> = new Map()): MonoTy => {
   if (isTyVar(t)) {
     if (renameMap.has(t.value)) {
-      return defined(renameMap.get(t.value));
+      return renameMap.get(t.value)!;
     } else {
       const n = tyVar(renameMap.size, t.context);
       renameMap.set(t.value, n);

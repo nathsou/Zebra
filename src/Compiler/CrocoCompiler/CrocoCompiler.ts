@@ -6,7 +6,6 @@ import { Decl } from "../../Parser/Decl";
 import { Expr } from "../../Parser/Expr";
 import { renameVars } from '../../Parser/RenameVars';
 import { symbolRenameMap } from "../../Parser/Symbols";
-import { defined } from "../../Utils/Common";
 import { crocoPrimitives } from "./CrocoPrimitives";
 
 const camel = (f: string): string => {
@@ -20,7 +19,7 @@ const rename = (f: string): string => {
   return `Ze${camel(f.replaceAll('_', ''))}`
     .split('')
     .map(c => symbolRenameMap.has(c) ?
-      (c === '_' ? 'U' : `${camel(defined(symbolRenameMap.get(c)))}`) :
+      (c === '_' ? 'U' : `${camel(symbolRenameMap.get(c)!)}`) :
       c
     )
     .join('');
@@ -46,7 +45,7 @@ export const crocoProgramOf = (prog: Decl[]): string => {
     .filter(s => s.length > 0);
 
   const primFuncs = [...usedPrimitives]
-    .map(f => defined(crocoPrimitives().get(f)));
+    .map(f => crocoPrimitives().get(f)!);
 
   return [primFuncs, topLevelFuncs, decls]
     .map(v => v.join('\n'))

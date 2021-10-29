@@ -5,7 +5,7 @@ import { DataTypeDecl, InstanceDecl } from "../Parser/Decl";
 import { VarExpr, varOf } from "../Parser/Expr";
 import { Program } from "../Parser/Program";
 import { appOf, lambdaOf } from "../Parser/Sugar";
-import { assert, decons, deepCopy, defined } from "../Utils/Common";
+import { assert, decons, deepCopy } from "../Utils/Common";
 import { coreOf } from "./Casify";
 import { CoreFuncDecl } from "./CoreDecl";
 import { CoreExpr, CoreLetInExpr, CoreLetRecInExpr, CoreVarExpr } from "./CoreExpr";
@@ -86,7 +86,7 @@ export const singleExprProgOf = (
       mutuallyRecPartialFuncs.set(
         f,
         rewriteMutuallyRecursiveFuncs(
-          comp.map(f => defined(funs.get(f)))
+          comp.map(f => funs.get(f)!)
         )
       );
 
@@ -111,7 +111,7 @@ export const singleExprProgOf = (
 
   // include unused dependencies (for type-cheking for instance)
   if (includeUnusedDependencies) {
-    const depsOfMain = defined(deps.get('main'));
+    const depsOfMain = deps.get('main')!;
 
     for (const f of deps.keys()) {
       if (f !== 'main') {
@@ -123,7 +123,7 @@ export const singleExprProgOf = (
   // reorder functions according to dependencies
   const reordered = [...reorderFunDecls('main', deps)]
     .filter(f => funs.has(f))
-    .map(f => defined(funs.get(f)));
+    .map(f => funs.get(f)!);
 
   return exprOfFunDeclsAux(reordered, mutuallyRecPartialFuncs);
 };
@@ -271,7 +271,7 @@ const partialFunOf = (
   }
 
   if (mutuallyRecPartialFuncs.has(f.funName.name)) {
-    return defined(mutuallyRecPartialFuncs.get(f.funName.name));
+    return mutuallyRecPartialFuncs.get(f.funName.name)!;
   }
 
   return isFunDeclRecursive(f) ? partialLetRecIn(f) : partialLetIn(f);
@@ -285,7 +285,7 @@ const exprOfFunDeclsAux = (
   if (funs.length === 1) return funs[0].body;
 
   const [f, fs] = decons(funs);
-  const main = defined(fs.pop());
+  const main = fs.pop()!;
 
   const top = partialFunOf(f, mutuallyRecPartialFuncs);
 
